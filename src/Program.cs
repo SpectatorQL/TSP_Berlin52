@@ -31,8 +31,8 @@ namespace Berlin
     {
         static Random _rand = new Random();
 
-        const int _M = 40;
-        const int _K = -1;
+        const int M = 40;
+        const int K = -1;
 
         static int[] GeneratePath(int len)
         {
@@ -60,6 +60,12 @@ namespace Berlin
             }
         }
 
+        static bool IsDone()
+        {
+            // TODO: Actually do anything relevant.
+            return true;
+        }
+
         static void Main(string[] args)
         {
             string header;
@@ -81,7 +87,9 @@ namespace Berlin
 
                 for(int i = 0; i < dataLen; ++i)
                 {
-                    string[] line = reader.ReadLine().Trim().Split(' ');
+                    string[] line = reader.ReadLine()
+                        .Trim()
+                        .Split(' ');
 
                     for(int j = 0; j < i; ++j)
                     {
@@ -92,21 +100,29 @@ namespace Berlin
                 }
             }
 
-            Specimen[] specimens = new Specimen[_M];
-            for(int i = 0; i < _M; ++i)
+            Specimen[] population = new Specimen[M];
+            for(int i = 0; i < M; ++i)
             {
-                specimens[i] = new Specimen();
-                specimens[i].Gene = GeneratePath(dataLen);
-                specimens[i].CalculateGeneValue(data);
-
-#if true
-                Debug.WriteLine("specimen[{0}]: {1}", i, specimens[i].GeneValue);
-#endif
+                population[i] = new Specimen();
+                population[i].Gene = GeneratePath(dataLen);
+                population[i].CalculateGeneValue(data);
+                
+                // Debug.WriteLine("specimen[{0}]: {1}", i, specimens[i].GeneValue);
             }
 
-#if false
-            Debug_PrintSquare(data, dataLen);
-#endif
+            while(IsDone())
+            {
+                /*
+                    How big does this thing need to be? I've no idea.
+                    Also, I don't know if this will ever need to expand.
+                    Couldn't I just make an array around 2-3 times bigger
+                    than M and make it work?
+                */
+                int count = M;
+                List<Specimen> tempPopulation = new List<Specimen>(count);
+            }
+
+            // Debug_PrintSquare(data, dataLen);
             Console.ReadKey();
         }
     }
