@@ -30,6 +30,32 @@ namespace Berlin
             }
         }
 
+        static void TournamentSelection(int[] selected, int[] fitVals, int M, int K)
+        {
+            for(int i = 0;
+                i < M;
+                ++i)
+            {
+                int bestVal = _rand.Next(0, M);
+                for(int j = 0;
+                    j < K;
+                    ++j)
+                {
+                    int next = _rand.Next(0, M);
+                    if(fitVals[bestVal] < fitVals[next])
+                    {
+                        bestVal = next;
+                    }
+                }
+
+                selected[i] = bestVal;
+            }
+        }
+
+        static void TournamentRoulette()
+        {
+        }
+
         static bool IsDone()
         {
             // TODO: Actually do anything relevant.
@@ -131,7 +157,17 @@ namespace Berlin
 
             while(IsDone())
             {
-                int[,] tempPopulation = new int[M, dataLen];
+                int[,] newPopulation = new int[M, dataLen];
+
+                int[] selected = new int[M];
+                // TODO: Make separate build configurations for the two.
+#if SELECTION_TOURNAMENT
+                TournamentSelection(selected, fitnessValues, M, K);
+#elif SELECTION_ROULETTE
+                TournamentRoulette();
+#else
+                ASSERT_PANIC();
+#endif
             }
             
             Console.ReadKey();

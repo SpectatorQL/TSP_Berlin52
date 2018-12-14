@@ -6,12 +6,6 @@ namespace Berlin
 {
     class Utils
     {
-        public static void Assert(bool expr)
-        {
-            if(!expr)
-                throw new NullReferenceException();
-        }
-
         public static void Debug_PrintPopulation(int[,] pop, int len0, int len1)
         {
             for(int i = 0;
