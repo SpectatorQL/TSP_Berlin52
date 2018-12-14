@@ -168,6 +168,48 @@ namespace Berlin
 #else
                 ASSERT_PANIC();
 #endif
+                int i = 0;
+                while(i < M)
+                {
+                    int[] child1 = null;
+                    int[] child2 = null;
+                    int c1 = i;
+                    int c2 = ++c1;
+
+                    for(int j = 0;
+                        j < dataLen;
+                        ++j)
+                    {
+                        child1 = new int[dataLen];
+                        child2 = new int[dataLen];
+                        child1[j] = population[selected[c1], j];
+                        child2[j] = population[selected[c2], j];
+                    }
+
+                    int leftCut = -1;
+                    int rightCut = -1;
+                    // TODO: Check if the cuts are apart from each other by some arbitrary length.
+                    while(leftCut < rightCut
+                        || rightCut < leftCut)
+                    {
+                        leftCut = _rand.Next(0, dataLen);
+                        rightCut = _rand.Next(0, dataLen);
+                    }
+
+
+
+                    for(int j = 0;
+                        j < dataLen;
+                        ++j)
+                    {
+                        newPopulation[c1, j] = child1[j];
+                        newPopulation[c2, j] = child2[j];
+                    }
+
+                    i += 2;
+                }
+
+                population = newPopulation;
             }
             
             Console.ReadKey();
