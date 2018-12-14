@@ -6,57 +6,27 @@ using static Berlin.Utils;
 
 namespace Berlin
 {
-    class Specimen
-    {
-        public int[] Gene;
-        public int GeneValue;
-
-        public void CalculateGeneValue(int[,] data)
-        {
-            int pathSum = 0;
-            int i = 0;
-            while(i < Gene.Length - 1)
-            {
-                int row = Gene[i];
-                int col = Gene[++i];
-                pathSum += data[row, col];
-            }
-            pathSum += data[i, 0];
-
-            GeneValue = pathSum;
-        }
-    }
-
     class Program
     {
         static Random _rand = new Random();
 
-        const int M = 40;
-        const int K = -1;
-
-        static int[] GeneratePath(int len)
+        static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
         {
-            int[] result = new int[len];
-            for(int i = 0; i < len; ++i)
+            for(int i = 0;
+                i < popLen0;
+                ++i)
             {
-                result[i] = i;
-            }
+                int fitVal = 0;
+                int j = 0;
+                while(j < popLen1 - 1)
+                {
+                    int row = pop[i, j];
+                    int col = pop[i, ++j];
+                    fitVal += data[row, col];
+                }
+                fitVal += data[j, 0];
 
-            Shuffle(result);
-
-            return result;
-        }
-
-        static void Shuffle(int[] arr)
-        {
-            int len = arr.Length;
-            for(int i = 0; i < len; ++i)
-            {
-                int swap = _rand.Next(len);
-
-                int a = arr[i];
-                arr[i] = arr[swap];
-                arr[swap] = a;
+                fitVals[i] = fitVal;
             }
         }
 
@@ -68,9 +38,15 @@ namespace Berlin
 
         static void Main(string[] args)
         {
+            const int M = 40;
+            const int K = 3;
+
             string header;
             int dataLen;
             int[,] data;
+
+            int[,] population;
+            int[] fitnessValues;
 
 #if false
             string file = "data\\berlinDebug.txt";
@@ -85,13 +61,17 @@ namespace Berlin
                 dataLen = int.Parse(header);
                 data = new int[dataLen, dataLen];
 
-                for(int i = 0; i < dataLen; ++i)
+                for(int i = 0;
+                    i < dataLen;
+                    ++i)
                 {
                     string[] line = reader.ReadLine()
                         .Trim()
                         .Split(' ');
 
-                    for(int j = 0; j < i; ++j)
+                    for(int j = 0;
+                        j < i;
+                        ++j)
                     {
                         int val = int.Parse(line[j]);
                         data[i, j] = val;
@@ -100,29 +80,60 @@ namespace Berlin
                 }
             }
 
-            Specimen[] population = new Specimen[M];
-            for(int i = 0; i < M; ++i)
+#if BERLIN_DEBUG
+            /*
+                NOTE(SpectatorQL): I would like to use QueryPerformanceCounter,
+                but I'm not sure if it's worth the marshalling overhead and
+                the overhead of any conversions to real time I would need to
+                perform myself.
+            */
+            Stopwatch s = new Stopwatch();
+            s.Start();
+#endif
+
+            population = new int[M, dataLen];
+            fitnessValues = new int[M];
+            for(int i = 0;
+                i < M;
+                ++i)
             {
-                population[i] = new Specimen();
-                population[i].Gene = GeneratePath(dataLen);
-                population[i].CalculateGeneValue(data);
-                
-                // Debug.WriteLine("specimen[{0}]: {1}", i, specimens[i].GeneValue);
+                int j = 0;
+                while(j < dataLen)
+                {
+                    population[i, j] = j++;
+                }
+
+                for(j = 0;
+                    j < dataLen;
+                    ++j)
+                {
+                    int swapIdx = _rand.Next(dataLen);
+                    int a = population[i, j];
+                    population[i, j] = population[i, swapIdx];
+                    population[i, swapIdx] = a;
+                }
             }
+            EvaluateFitness(data, population, M, dataLen, fitnessValues);
+
+#if BERLIN_DEBUG
+            s.Stop();
+            Debug.WriteLine("{0}ticks, {1}ms, {2}s",
+                s.Elapsed.Ticks,
+                s.ElapsedMilliseconds,
+                s.ElapsedMilliseconds / (float)1000);
+#endif
+
+#if false
+            Debug_PrintSquare(data, dataLen);
+            Debug_PrintPopulation(population, M, dataLen);
+            Debug_PrintFitnessValues(fitnessValues);
+#endif
 
             while(IsDone())
             {
-                /*
-                    How big does this thing need to be? I've no idea.
-                    Also, I don't know if this will ever need to expand.
-                    Couldn't I just make an array around 2-3 times bigger
-                    than M and make it work?
-                */
-                int count = M;
-                List<Specimen> tempPopulation = new List<Specimen>(count);
+                int[,] tempPopulation = new int[M, dataLen];
             }
-
-            // Debug_PrintSquare(data, dataLen);
+            
             Console.ReadKey();
         }
     }
