@@ -154,6 +154,11 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
+            foreach(string arg in args)
+            {
+                Console.WriteLine(arg);
+            }
+
 #if false
             string file = "data\\berlinDebug.txt";
 #else
