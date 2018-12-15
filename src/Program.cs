@@ -88,13 +88,9 @@ namespace Berlin
                     {
                         j = 0;
                     }
-                    else if(j == leftCut)
-                    {
-                        break;
-                    }
 
                     int node = p2[j];
-                    if(!NodeIsInCrossSection(node, child, leftCut, rightCut))
+                    if(!NodeIsInCrossSection(node, crossSection))
                     {
                         child[i] = node;
                         --nodesToCopy;
@@ -111,15 +107,20 @@ namespace Berlin
             return child;
         }
 
-        static bool NodeIsInCrossSection(int node, int[] arr, int crossStart, int crossEnd)
+        /*
+            TODO: Binary search!
+            NOTE(SpectatorQL): At the moment this thing is pretty fast, but
+            binary search will probably make it even faster. We'll see.
+        */
+        static bool NodeIsInCrossSection(int node, int[] crossSection)
         {
             bool result = false;
 
-            for(int i = crossStart;
-                i <= crossEnd;
+            for(int i = 0;
+                i < crossSection.Length;
                 ++i)
             {
-                if(arr[i] == node)
+                if(crossSection[i] == node)
                 {
                     result = true;
                     return result;
