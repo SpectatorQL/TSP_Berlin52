@@ -9,6 +9,7 @@ namespace Berlin
     class Program
     {
         static Random _rand = new Random();
+        static uint _i = 0;
 
         static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
         {
@@ -59,17 +60,17 @@ namespace Berlin
         static int[] OXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
             int[] child = new int[dataLen];
-
-            int crossLen = (rightCut - leftCut) + 1;
+            
             for(int i = leftCut;
-                i <= crossLen;
+                i <= rightCut;
                 ++i)
             {
                 child[i] = p1[i];
             }
-
-            int j = rightCut + 1;
+            
+            int crossLen = (rightCut - leftCut) + 1;
             int nodesToCopy = dataLen - crossLen;
+            int j = rightCut + 1;
             while(nodesToCopy > 0)
             {
                 if(j >= dataLen)
@@ -95,20 +96,29 @@ namespace Berlin
             bool result = false;
 
             for(int i = crossStart;
-                i < crossEnd;
+                i <= crossEnd;
                 ++i)
             {
                 if(arr[i] == node)
+                {
                     result = true;
+                    return result;
+                }
             }
 
             return result;
         }
 
-        static bool IsDone()
+        static bool Continue()
         {
-            // TODO: Actually do anything relevant.
-            return true;
+            if(_i++ < uint.MaxValue)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         static void Main(string[] args)
@@ -123,7 +133,7 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
-#if true
+#if false
             string file = "data\\berlinDebug.txt";
 #else
             string file = "data\\berlin52.txt";
@@ -204,8 +214,12 @@ namespace Berlin
             Debug_PrintFitnessValues(fitnessValues);
 #endif
 
-            while(IsDone())
+            while(Continue())
             {
+#if BERLIN_DEBUG
+                s.Restart();
+#endif
+
                 int[,] newPopulation = new int[M, dataLen];
 
                 int[] selected = new int[M];
@@ -237,7 +251,7 @@ namespace Berlin
                     int leftCut = -1;
                     int rightCut = -1;
                     // NOTE(SpectatorQL): I could probably use dataLen to calculate this. We'll see.
-#if true
+#if false
                     int dist = 1;
 #else
                     int dist = 10;
@@ -265,6 +279,15 @@ namespace Berlin
                 }
 
                 population = newPopulation;
+                EvaluateFitness(data, population, M, dataLen, fitnessValues);
+
+#if BERLIN_DEBUG
+                s.Stop();
+                Debug.WriteLine("{0}ticks, {1}ms, {2}s",
+                    s.Elapsed.Ticks,
+                    s.ElapsedMilliseconds,
+                    s.ElapsedMilliseconds / (float)1000);
+#endif
             }
             
             // NOTE(SpectatorQL): Never gets here?
