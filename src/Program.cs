@@ -267,17 +267,6 @@ namespace Berlin
                 }
             }
 
-#if BERLIN_DEBUG
-            /*
-                NOTE(SpectatorQL): I would like to use QueryPerformanceCounter,
-                but I'm not sure if it's worth the marshalling overhead and
-                the overhead of any conversions to real time I would need to
-                perform myself.
-            */
-            Stopwatch s = new Stopwatch();
-            s.Start();
-#endif
-
             population = new int[M, dataLen];
             fitnessValues = new int[M];
             for(int i = 0;
@@ -302,25 +291,10 @@ namespace Berlin
             }
             EvaluateFitness(data, population, M, dataLen, fitnessValues);
 
-#if BERLIN_DEBUG
-            s.Stop();
-            Debug.WriteLine("{0}ticks, {1}ms, {2}s",
-                s.Elapsed.Ticks,
-                s.ElapsedMilliseconds,
-                s.ElapsedMilliseconds / (float)1000);
-#endif
-
-#if false
-            Debug_PrintSquare(data, dataLen);
-            Debug_PrintPopulation(population, M, dataLen);
-            Debug_PrintFitnessValues(fitnessValues);
-#endif
 
             while(Continue())
             {
-#if BERLIN_DEBUG
-                s.Restart();
-#endif
+                Debug_StartTimer();
 
                 int[,] newPopulation = new int[M, dataLen];
                 int[] selected = new int[M];
@@ -386,6 +360,7 @@ namespace Berlin
                         throw new NullReferenceException();
                     }
 
+                    // NOTE(SpectatorQL): I could probably just overwrite the original population at this point.
                     for(int j = 0;
                         j < dataLen;
                         ++j)
@@ -400,13 +375,7 @@ namespace Berlin
                 population = newPopulation;
                 EvaluateFitness(data, population, M, dataLen, fitnessValues);
 
-#if BERLIN_DEBUG
-                s.Stop();
-                Debug.WriteLine("{0}ticks, {1}ms, {2}s",
-                    s.Elapsed.Ticks,
-                    s.ElapsedMilliseconds,
-                    s.ElapsedMilliseconds / (float)1000);
-#endif
+                Debug_StopTimer();
             }
             
             // NOTE(SpectatorQL): Never gets here?

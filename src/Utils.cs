@@ -6,6 +6,31 @@ namespace Berlin
 {
     class Utils
     {
+        /*
+            NOTE(SpectatorQL): I would like to use QueryPerformanceCounter,
+            but I'm not sure if it's worth the marshalling overhead and
+            the overhead of any conversions to real time I would need to
+            perform myself.
+        */
+        static Stopwatch _s = new Stopwatch();
+
+        [Conditional("BERLIN_DEBUG")]
+        public static void Debug_StartTimer()
+        {
+            _s.Restart();
+        }
+
+        [Conditional("BERLIN_DEBUG")]
+        public static void Debug_StopTimer()
+        {
+            _s.Stop();
+            Debug.WriteLine("{0}ticks, {1}ms, {2}s",
+                _s.Elapsed.Ticks,
+                _s.ElapsedMilliseconds,
+                _s.ElapsedMilliseconds / (float)1000);
+        }
+
+        [Conditional("BERLIN_DEBUG")]
         public static void Debug_PrintPopulation(int[,] pop, int len0, int len1)
         {
             for(int i = 0;
@@ -23,6 +48,7 @@ namespace Berlin
             }
         }
 
+        [Conditional("BERLIN_DEBUG")]
         public static void Debug_PrintFitnessValues(int[] fitVals)
         {
             for(int i = 0;
@@ -33,6 +59,7 @@ namespace Berlin
             }
         }
 
+        [Conditional("BERLIN_DEBUG")]
         public static void Debug_PrintTriangle(int[,] arr, int rowLength)
         {
             for(int i = 0;
@@ -50,6 +77,7 @@ namespace Berlin
             }
         }
 
+        [Conditional("BERLIN_DEBUG")]
         public static void Debug_PrintSquare(int[,] arr, int rowLength)
         {
             for(int i = 0;
