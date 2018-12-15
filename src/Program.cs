@@ -63,6 +63,7 @@ namespace Berlin
             int[] child = new int[dataLen];
 
             int crossLen = (rightCut - leftCut) + 1;
+            // TODO: stackalloc
             int[] crossSection = new int[crossLen];
             
             for(int i = leftCut;
@@ -129,6 +130,30 @@ namespace Berlin
             }
 
             return result;
+        }
+
+        static void Mutate(int[] child, int dataLen)
+        {
+            // TODO: stackalloc
+            const int len = 3;
+            int[] nodesToMutate = new int[len]
+            {
+                _rand.Next(dataLen),
+                _rand.Next(dataLen),
+                _rand.Next(dataLen)
+            };
+            
+            for(int i = 0;
+                i < len;
+                ++i)
+            {
+                int j = _rand.Next(dataLen);
+                int k = nodesToMutate[i];
+
+                int node = child[j];
+                child[j] = child[k];
+                child[k] = node;
+            }
         }
 
         static bool Continue()
@@ -216,11 +241,17 @@ namespace Berlin
         {
             const int M = 40;
             const int K = 3;
+            const double MUTATION_CHANCE = 0.05;
 
             string header;
             int dataLen;
             int[,] data;
 
+            /*
+                NOTE(SpectatorQL): Stackalloc may be a good option, but I'm not sure
+                whether using it would incur any constraints on passing the
+                population as an argument to functions.
+            */
             int[,] population;
             int[] fitnessValues;
 
@@ -319,7 +350,7 @@ namespace Berlin
                     int[] parent2 = new int[dataLen];
                     int p1 = i;
                     int p2 = p1 + 1;
-
+                    
                     for(int j = 0;
                         j < dataLen;
                         ++j)
@@ -358,6 +389,19 @@ namespace Berlin
                     else
                     {
                         throw new NullReferenceException();
+                    }
+
+                    double divisor = 1000.0;
+                    double d = _rand.Next(11) / divisor;
+                    if(d > MUTATION_CHANCE)
+                    {
+                        Mutate(child1, dataLen);
+                    }
+
+                    d = _rand.Next(101) / divisor;
+                    if(d > MUTATION_CHANCE)
+                    {
+                        Mutate(child2, dataLen);
                     }
 
                     // NOTE(SpectatorQL): I could probably just overwrite the original population at this point.
