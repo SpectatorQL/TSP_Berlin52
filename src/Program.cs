@@ -44,7 +44,7 @@ namespace Berlin
                     ++j)
                 {
                     int next = _rand.Next(0, M);
-                    if(fitVals[bestVal] < fitVals[next])
+                    if(fitVals[next] < fitVals[bestVal])
                     {
                         bestVal = next;
                     }
