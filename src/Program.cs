@@ -54,8 +54,14 @@ namespace Berlin
             }
         }
 
-        static void TournamentRoulette()
+        static void TournamentRoulette(int[] selected, int[] fitVals, int M)
         {
+            for(int i = 0;
+                i < M;
+                ++i)
+            {
+
+            }
         }
 
         static int[] OXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
@@ -156,8 +162,44 @@ namespace Berlin
             }
         }
 
-        static bool Continue()
+        static bool Continue(int[,] pop, int[] fitVals, int M, int dataLen)
         {
+#if true
+            if(_i % 1000 == 0)
+            {
+                int bestVal = fitVals[0];
+                int bestValIdx = 0;
+                for(int i = 1;
+                    i < M;
+                    ++i)
+                {
+                    int val = fitVals[i];
+                    if(val < bestVal)
+                    {
+                        bestVal = val;
+                        bestValIdx = i;
+                    }
+                }
+
+                // TODO: Cache to reduce GC overhead.
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(dataLen * 3);
+                for(int i = 0;
+                    i < dataLen;
+                    ++i)
+                {
+                    int node = pop[bestValIdx, i];
+                    sb.Append(node);
+                    sb.Append(' ');
+                }
+
+                string output = string.Format("Iterations:{0}  Best value:{1}\nBest path:{2}\n",
+                    _i,
+                    bestVal,
+                    sb.ToString());
+                Console.WriteLine(output);
+            }
+#endif
+
             if(_i++ < uint.MaxValue)
             {
                 return true;
@@ -241,7 +283,7 @@ namespace Berlin
         {
             const int M = 40;
             const int K = 3;
-            const double MUTATION_CHANCE = 0.05;
+            const double MUTATION_CHANCE = 0.04;
 
             string header;
             int dataLen;
@@ -323,7 +365,7 @@ namespace Berlin
             EvaluateFitness(data, population, M, dataLen, fitnessValues);
 
 
-            while(Continue())
+            while(Continue(population, fitnessValues, M, dataLen))
             {
                 Debug_StartTimer();
 
@@ -336,7 +378,7 @@ namespace Berlin
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
-                    TournamentRoulette();
+                    // TournamentRoulette();
                 }
                 else
                 {
