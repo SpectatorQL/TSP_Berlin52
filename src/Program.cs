@@ -10,6 +10,7 @@ namespace Berlin
     {
         static Random _rand = new Random();
         static uint _i = 0;
+        static Flags _flags;
 
         static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
         {
@@ -142,6 +143,75 @@ namespace Berlin
             }
         }
 
+        enum Flags : byte
+        {
+            SELECTION_TOURNAMENT = 0x01,
+            SELECTION_ROULETTE = 0x02,
+
+            CROSSOVER_PMX = 0x04,
+            CROSSOVER_OX = 0x08
+        }
+
+        static bool ParseCmdArguments(string[] args, ref string error)
+        {
+            bool result = false;
+
+            if((args != null) && (args.Length != 0))
+            {
+                for(int i = 0;
+                    i < args.Length;
+                    ++i)
+                {
+                    string arg = args[i];
+                    switch(arg)
+                    {
+                        case "-tournament":
+                        {
+                            _flags |= Flags.SELECTION_TOURNAMENT;
+                            break;
+                        }
+                        case "-roulette":
+                        {
+                            _flags |= Flags.SELECTION_ROULETTE;
+                            break;
+                        }
+                        
+                        case "-PMX":
+                        {
+                            _flags |= Flags.CROSSOVER_PMX;
+                            break;
+                        }
+                        case "-OX":
+                        {
+                            _flags |= Flags.CROSSOVER_OX;
+                            break;
+                        }
+
+                        default:
+                        {
+                            Debug.WriteLine("Unrecognized parameter: \"{0}\"", arg);
+                            break;
+                        }
+                    }
+                }
+
+                if(_flags != 0x00)
+                {
+                    result = true;
+                }
+                else
+                {
+                    error = "Error. Invalid parameters.";
+                }
+            }
+            else
+            {
+                error = "Error. The program was launched without any parameters.";
+            }
+
+            return result;
+        }
+
         static void Main(string[] args)
         {
             const int M = 40;
@@ -154,9 +224,15 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
-            foreach(string arg in args)
+            string error = null;
+            if(!ParseCmdArguments(args, ref error))
             {
-                Console.WriteLine(arg);
+#if BERLIN_DEBUG
+                _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
+#else
+                Console.WriteLine(error);
+                throw new NullReferenceException();
+#endif
             }
 
 #if false
@@ -247,17 +323,21 @@ namespace Berlin
 #endif
 
                 int[,] newPopulation = new int[M, dataLen];
-
                 int[] selected = new int[M];
-                // TODO: Make separate build configurations for the two.
-                // TODO: Or maybe invoke them based on a cmd argument?
-#if SELECTION_TOURNAMENT
-                TournamentSelection(selected, fitnessValues, M, K);
-#elif SELECTION_ROULETTE
-                TournamentRoulette();
-#else
-                ASSERT_PANIC();
-#endif
+
+                if(_flags.HasFlag(Flags.SELECTION_TOURNAMENT))
+                {
+                    TournamentSelection(selected, fitnessValues, M, K);
+                }
+                else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
+                {
+                    TournamentRoulette();
+                }
+                else
+                {
+                    throw new NullReferenceException();
+                }
+
                 int i = 0;
                 while(i < M)
                 {
@@ -289,9 +369,22 @@ namespace Berlin
                         rightCut = _rand.Next(midPoint, dataLen - 1);
                     }
 
-                    // OX Crossover
-                    int[] child1 = OXCrossover(parent1, parent2, leftCut, rightCut, dataLen);
-                    int[] child2 = OXCrossover(parent2, parent1, leftCut, rightCut, dataLen);
+                    int[] child1 = null;
+                    int[] child2 = null;
+
+                    if(_flags.HasFlag(Flags.CROSSOVER_PMX))
+                    {
+
+                    }
+                    else if(_flags.HasFlag(Flags.CROSSOVER_OX))
+                    {
+                        child1 = OXCrossover(parent1, parent2, leftCut, rightCut, dataLen);
+                        child2 = OXCrossover(parent2, parent1, leftCut, rightCut, dataLen);
+                    }
+                    else
+                    {
+                        throw new NullReferenceException();
+                    }
 
                     for(int j = 0;
                         j < dataLen;
