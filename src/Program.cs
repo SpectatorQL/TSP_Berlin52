@@ -38,29 +38,39 @@ namespace Berlin
                 i < M;
                 ++i)
             {
-                int bestVal = _rand.Next(0, M);
+                int bestSpecimen = _rand.Next(0, M);
                 for(int j = 0;
                     j < K;
                     ++j)
                 {
-                    int next = _rand.Next(0, M);
-                    if(fitVals[next] < fitVals[bestVal])
+                    int nextSpecimen = _rand.Next(0, M);
+                    if(fitVals[nextSpecimen] < fitVals[bestSpecimen])
                     {
-                        bestVal = next;
+                        bestSpecimen = nextSpecimen;
                     }
                 }
 
-                selected[i] = bestVal;
+                selected[i] = bestSpecimen;
             }
         }
 
         static void RouletteSelect(int[] selected, int[] fitVals, int M)
         {
+            // NOTE(SpectatorQL): Everything is inverted because best == lowest.
+            const double CHANCE = 0.5f;
+            int fitnessSum = ArraySum(fitVals, M);
             for(int i = 0;
                 i < M;
                 ++i)
             {
+                int j = 0;
+                double jChance = _rand.NextDouble();
+                do
+                {
+                    jChance -= fitVals[j++] / (double)fitnessSum;
+                } while(jChance > CHANCE);
 
+                selected[i] = j;
             }
         }
 
@@ -378,7 +388,7 @@ namespace Berlin
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
-                    // TournamentRoulette();
+                    RouletteSelect(selected, fitnessValues, M);
                 }
                 else
                 {

@@ -14,6 +14,20 @@ namespace Berlin
         */
         static Stopwatch _s = new Stopwatch();
 
+        public static int ArraySum(int[] arr, int len)
+        {
+            int result = arr[0];
+
+            for(int i = 1;
+                i < len;
+                ++i)
+            {
+                result += arr[i];
+            }
+
+            return result;
+        }
+
         [Conditional("BERLIN_DEBUG")]
         public static void Debug_StartTimer()
         {
