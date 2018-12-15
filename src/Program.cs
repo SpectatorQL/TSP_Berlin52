@@ -60,6 +60,9 @@ namespace Berlin
         static int[] OXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
             int[] child = new int[dataLen];
+
+            int crossLen = (rightCut - leftCut) + 1;
+            int[] crossSection = new int[crossLen];
             
             for(int i = leftCut;
                 i <= rightCut;
@@ -67,25 +70,42 @@ namespace Berlin
             {
                 child[i] = p1[i];
             }
+
+            Array.Copy(child, leftCut, crossSection, 0, crossLen);
+            Array.Sort(crossSection);
             
-            int crossLen = (rightCut - leftCut) + 1;
             int nodesToCopy = dataLen - crossLen;
-            int j = rightCut + 1;
-            while(nodesToCopy > 0)
             {
-                if(j >= dataLen)
+                int i = rightCut + 1;
+                int j = i;
+                while(nodesToCopy > 0)
                 {
-                    j = 0;
-                }
+                    if(i >= dataLen)
+                    {
+                        i = 0;
+                    }
+                    if(j >= dataLen)
+                    {
+                        j = 0;
+                    }
+                    else if(j == leftCut)
+                    {
+                        break;
+                    }
 
-                int node = p2[j];
-                if(!NodeIsInCrossSection(node, child, leftCut, rightCut))
-                {
-                    child[j] = node;
-                    --nodesToCopy;
+                    int node = p2[j];
+                    if(!NodeIsInCrossSection(node, child, leftCut, rightCut))
+                    {
+                        child[i] = node;
+                        --nodesToCopy;
+                        ++j;
+                        ++i;
+                    }
+                    else
+                    {
+                        ++j;
+                    }
                 }
-
-                ++j;
             }
 
             return child;
