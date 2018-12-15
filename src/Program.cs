@@ -32,7 +32,7 @@ namespace Berlin
             }
         }
 
-        static void TournamentSelection(int[] selected, int[] fitVals, int M, int K)
+        static void TournamentSelect(int[] selected, int[] fitVals, int M, int K)
         {
             for(int i = 0;
                 i < M;
@@ -54,7 +54,7 @@ namespace Berlin
             }
         }
 
-        static void TournamentRoulette(int[] selected, int[] fitVals, int M)
+        static void RouletteSelect(int[] selected, int[] fitVals, int M)
         {
             for(int i = 0;
                 i < M;
@@ -374,7 +374,7 @@ namespace Berlin
 
                 if(_flags.HasFlag(Flags.SELECTION_TOURNAMENT))
                 {
-                    TournamentSelection(selected, fitnessValues, M, K);
+                    TournamentSelect(selected, fitnessValues, M, K);
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
