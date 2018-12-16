@@ -11,6 +11,7 @@ namespace Berlin
         static Random _rand = new Random();
         static uint _i = 0;
         static Flags _flags;
+        static ulong _timesMutated = 0;
 
         static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
         {
@@ -379,14 +380,17 @@ namespace Berlin
                     }
                 }
                 
-                // NOTE(SpectatorQL): If only C# would let me define implicit conversions on enums... Oh well.
                 byte selectionMask = (byte)Flags.SelectionMask;
                 byte crossoverMask = (byte)Flags.CrossoverMask;
-                if(((byte)_flags != 0x00)
-                    && (((byte)_flags & selectionMask) != selectionMask)
-                    && (((byte)_flags & selectionMask) != 0x00)
-                    && (((byte)_flags & crossoverMask) != crossoverMask)
-                    && (((byte)_flags & crossoverMask) != 0x00))
+                byte selectionFlags = (byte)((byte)_flags & selectionMask);
+                byte crossoverFlags = (byte)((byte)_flags & crossoverMask);
+                if(((byte)_flags != 0)
+
+                    && ((selectionFlags & (selectionFlags -1)) == 0)
+                    && (selectionFlags != 0)
+
+                    && ((crossoverFlags & (crossoverFlags - 1)) == 0)
+                    && (crossoverFlags != 0))
                 {
                     result = true;
                 }
@@ -567,16 +571,19 @@ namespace Berlin
                     }
 
                     // TODO: Multithreading
+                    // TODO: Fix these calculations
                     double divisor = 1000.0;
-                    double d = _rand.Next(11) / divisor;
+                    double d = _rand.Next(101) / divisor;
                     if(d > MUTATION_CHANCE)
                     {
+                        ++_timesMutated;
                         Mutate(child1, dataLen);
                     }
 
                     d = _rand.Next(101) / divisor;
                     if(d > MUTATION_CHANCE)
                     {
+                        ++_timesMutated;
                         Mutate(child2, dataLen);
                     }
 
@@ -594,7 +601,7 @@ namespace Berlin
 
                 population = newPopulation;
                 EvaluateFitness(data, population, M, dataLen, fitnessValues);
-
+                
                 Debug_StopTimer();
             }
             
