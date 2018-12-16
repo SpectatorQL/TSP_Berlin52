@@ -222,6 +222,9 @@ namespace Berlin
 
         enum Flags : byte
         {
+            SelectionMask = 0b00000011,
+            CrossoverMask = 0b00001100,
+
             SELECTION_TOURNAMENT = 0x01,
             SELECTION_ROULETTE = 0x02,
 
@@ -271,8 +274,15 @@ namespace Berlin
                         }
                     }
                 }
-
-                if(_flags != 0x00)
+                
+                // NOTE(SpectatorQL): If only C# would let me define implicit conversions on enums... Oh well.
+                byte selectionMask = (byte)Flags.SelectionMask;
+                byte crossoverMask = (byte)Flags.CrossoverMask;
+                if(((byte)_flags != 0x00)
+                    && (((byte)_flags & selectionMask) != selectionMask)
+                    && (((byte)_flags & selectionMask) != 0x00)
+                    && (((byte)_flags & crossoverMask) != crossoverMask)
+                    && (((byte)_flags & crossoverMask) != 0x00))
                 {
                     result = true;
                 }
@@ -307,16 +317,16 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
+#if BERLIN_DEBUG
+            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
+#else
             string error = null;
             if(!ParseCmdArguments(args, ref error))
             {
-#if BERLIN_DEBUG
-                _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
-#else
                 Console.WriteLine(error);
                 throw new NullReferenceException();
-#endif
             }
+#endif
 
 #if false
             string file = "data\\berlinDebug.txt";
@@ -388,6 +398,13 @@ namespace Berlin
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
+                    /*
+                        TODO: Sort the population.
+                        NOTE(SpectatorQL): In order for RouletteSelect to work the
+                        population needs to be sorted based on the fitness values.
+                        Which sucks, because I end up calling EvaluateFitness twice.
+                        But if I don't do that then the algorithm gets wild.
+                    */
                     RouletteSelect(selected, fitnessValues, M);
                 }
                 else
@@ -429,9 +446,10 @@ namespace Berlin
                     int[] child1 = null;
                     int[] child2 = null;
 
+                    // TODO: Multithreading
                     if(_flags.HasFlag(Flags.CROSSOVER_PMX))
                     {
-
+                        Console.WriteLine("PMX crossover not implemented yet.");
                     }
                     else if(_flags.HasFlag(Flags.CROSSOVER_OX))
                     {
@@ -443,6 +461,7 @@ namespace Berlin
                         throw new NullReferenceException();
                     }
 
+                    // TODO: Multithreading
                     double divisor = 1000.0;
                     double d = _rand.Next(11) / divisor;
                     if(d > MUTATION_CHANCE)
