@@ -74,6 +74,110 @@ namespace Berlin
             }
         }
 
+        static int[] PMXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        {
+            int[] child = new int[dataLen];
+            
+            for(int i = leftCut;
+                i <= rightCut;
+                ++i)
+            {
+                child[i] = p1[i];
+            }
+
+            /*
+                NOTE(SpectatorQL): Instead of doing all the evil stuff with (index, value)
+                pairs right away, I figured I could just give the child all of p2's remaining nodes
+                first and then do all those crazy shenanigans.
+            */
+            for(int i = 0;
+                i < dataLen;
+                ++i)
+            {
+                if(i == leftCut)
+                {
+                    i = rightCut + 1;
+                }
+
+                child[i] = p2[i];
+            }
+            
+            List<int> freeIndices = FreeIndices(p1, p2, leftCut, rightCut);
+            
+            /*
+                NOTE(SpectatorQL): Please, for the love of God, don't ever ask
+                me how this thing works or why it's written the way it is.
+                It drove me FREAKING NUTS.
+                This part especially.
+                While I get the general idea of how PMX works, trying to
+                translate the algorithm into code was just PURE EVIL.
+            */
+            for(int i = 0;
+                i < freeIndices.Count;
+                ++i)
+            {
+                int freeIndex = freeIndices[i];
+                int nodeToCopy = p2[freeIndex];
+                
+                int copyIndex = freeIndex;
+                do
+                {
+                    int searchedNode = p1[copyIndex];
+                    for(int j = 0;
+                        j < dataLen;
+                        ++j)
+                    {
+                        if(p2[j] == searchedNode)
+                        {
+                            copyIndex = j;
+                            break;
+                        }
+                    }
+                } while(IndexInsideCrossSection(copyIndex, leftCut, rightCut));
+                
+                child[copyIndex] = nodeToCopy;
+            }
+
+            return child;
+        }
+
+        static List<int> FreeIndices(int[] p1, int[] p2, int leftCut, int rightCut)
+        {
+            List<int> indices = new List<int>();
+            
+            for(int i = leftCut;
+                i <= rightCut;
+                ++i)
+            {
+                int node = p2[i];
+                bool notInCrossSection = true;
+
+                for(int j = leftCut;
+                    j <= rightCut;
+                    ++j)
+                {
+                    if(node == p1[j])
+                    {
+                        notInCrossSection = false;
+                        break;
+                    }
+                }
+
+                if(notInCrossSection)
+                {
+                    indices.Add(i);
+                }
+            }
+
+            return indices;
+        }
+
+        static bool IndexInsideCrossSection(int idx, int start, int end)
+        {
+            bool result = (idx >= start && idx <= end) ? true : false;
+            return result;
+        }
+
         static int[] OXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
             int[] child = new int[dataLen];
@@ -318,7 +422,7 @@ namespace Berlin
             int[] fitnessValues;
 
 #if BERLIN_DEBUG
-            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
+            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
 #else
             string error = null;
             if(!ParseCmdArguments(args, ref error))
@@ -449,7 +553,8 @@ namespace Berlin
                     // TODO: Multithreading
                     if(_flags.HasFlag(Flags.CROSSOVER_PMX))
                     {
-                        Console.WriteLine("PMX crossover not implemented yet.");
+                        child1 = PMXCrossover(parent1, parent2, leftCut, rightCut, dataLen);
+                        child2 = PMXCrossover(parent2, parent1, leftCut, rightCut, dataLen);
                     }
                     else if(_flags.HasFlag(Flags.CROSSOVER_OX))
                     {
