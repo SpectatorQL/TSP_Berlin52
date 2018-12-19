@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using static Berlin.Utils;
 
 namespace Berlin
@@ -9,9 +10,13 @@ namespace Berlin
     class Program
     {
         static Random _rand = new Random();
-        static uint _i = 0;
+
         static Flags _flags;
-        static ulong _timesMutated = 0;
+        static string _file;
+        
+        static uint _i = 0;
+        static ulong _mutations = 0;
+        static StringBuilder _outputSB = new StringBuilder();
 
         static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
         {
@@ -33,8 +38,9 @@ namespace Berlin
             }
         }
 
-        static void TournamentSelect(int[] selected, int[] fitVals, int M, int K)
+        static void TournamentSelect(int[] selected, int[] fitVals, int M)
         {
+            const int K = 3;
             for(int i = 0;
                 i < M;
                 ++i)
@@ -57,28 +63,25 @@ namespace Berlin
 
         static void RouletteSelect(int[] selected, int[] fitVals, int M)
         {
-            // NOTE(SpectatorQL): Everything is inverted because best == lowest.
-            const double CHANCE = 0.5f;
             int fitnessSum = ArraySum(fitVals, M);
             for(int i = 0;
                 i < M;
                 ++i)
             {
                 int j = 0;
+                double sum = 0;
                 double jChance = _rand.NextDouble();
                 do
                 {
-                    jChance -= fitVals[j++] / (double)fitnessSum;
-                } while(jChance > CHANCE);
+                    sum += fitVals[j] / (double)fitnessSum;
+                } while(jChance > sum);
 
                 selected[i] = j;
             }
         }
 
-        static int[] PMXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        static void PMXCrossover(int[]child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
-            int[] child = new int[dataLen];
-            
             for(int i = leftCut;
                 i <= rightCut;
                 ++i)
@@ -105,14 +108,6 @@ namespace Berlin
             
             List<int> freeIndices = FreeIndices(p1, p2, leftCut, rightCut);
             
-            /*
-                NOTE(SpectatorQL): Please, for the love of God, don't ever ask
-                me how this thing works or why it's written the way it is.
-                It drove me FREAKING NUTS.
-                This part especially.
-                While I get the general idea of how PMX works, trying to
-                translate the algorithm into code was just PURE EVIL.
-            */
             for(int i = 0;
                 i < freeIndices.Count;
                 ++i)
@@ -138,8 +133,6 @@ namespace Berlin
                 
                 child[copyIndex] = nodeToCopy;
             }
-
-            return child;
         }
 
         static List<int> FreeIndices(int[] p1, int[] p2, int leftCut, int rightCut)
@@ -179,20 +172,18 @@ namespace Berlin
             return result;
         }
 
-        static int[] OXCrossover(int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        static void OXCrossover(int[] child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
-            int[] child = new int[dataLen];
-
-            int crossLen = (rightCut - leftCut) + 1;
-            // TODO: stackalloc
-            int[] crossSection = new int[crossLen];
-            
             for(int i = leftCut;
                 i <= rightCut;
                 ++i)
             {
                 child[i] = p1[i];
             }
+
+            int crossLen = (rightCut - leftCut) + 1;
+            // TODO: stackalloc
+            int[] crossSection = new int[crossLen];
 
             Array.Copy(child, leftCut, crossSection, 0, crossLen);
             Array.Sort(crossSection);
@@ -226,14 +217,12 @@ namespace Berlin
                     }
                 }
             }
-
-            return child;
         }
 
         /*
             TODO: Binary search!
             NOTE(SpectatorQL): At the moment this thing is pretty fast, but
-            binary search will probably make it even faster. We'll see.
+            binary search will probably make it even faster.
         */
         static bool NodeIsInCrossSection(int node, int[] crossSection)
         {
@@ -256,8 +245,8 @@ namespace Berlin
         static void Mutate(int[] child, int dataLen)
         {
             // TODO: stackalloc
-            const int len = 3;
-            int[] nodesToMutate = new int[len]
+            const int LEN = 3;
+            int[] nodesToMutate = new int[LEN]
             {
                 _rand.Next(dataLen),
                 _rand.Next(dataLen),
@@ -265,7 +254,7 @@ namespace Berlin
             };
             
             for(int i = 0;
-                i < len;
+                i < LEN;
                 ++i)
             {
                 int j = _rand.Next(dataLen);
@@ -279,7 +268,6 @@ namespace Berlin
 
         static bool Continue(int[,] pop, int[] fitVals, int M, int dataLen)
         {
-#if true
             if(_i % 1000 == 0)
             {
                 int bestVal = fitVals[0];
@@ -295,25 +283,24 @@ namespace Berlin
                         bestValIdx = i;
                     }
                 }
-
-                // TODO: Cache to reduce GC overhead.
-                System.Text.StringBuilder sb = new System.Text.StringBuilder(dataLen * 3);
+                
+                _outputSB.Clear();
                 for(int i = 0;
                     i < dataLen;
                     ++i)
                 {
                     int node = pop[bestValIdx, i];
-                    sb.Append(node);
-                    sb.Append(' ');
+                    _outputSB.Append(node);
+                    _outputSB.Append('-');
                 }
 
-                string output = string.Format("Iterations:{0}  Best value:{1}\nBest path:{2}\n",
+                string output = string.Format("Iterations:{0} Mutations:{1} Best value:{2}\nBest path:{3}\n",
                     _i,
+                    _mutations,
                     bestVal,
-                    sb.ToString());
+                    _outputSB.ToString());
                 Console.WriteLine(output);
             }
-#endif
 
             if(_i++ < uint.MaxValue)
             {
@@ -327,23 +314,27 @@ namespace Berlin
 
         enum Flags : byte
         {
-            SelectionMask = 0b00000011,
-            CrossoverMask = 0b00001100,
-
             SELECTION_TOURNAMENT = 0x01,
             SELECTION_ROULETTE = 0x02,
 
             CROSSOVER_PMX = 0x04,
-            CROSSOVER_OX = 0x08
+            CROSSOVER_OX = 0x08,
+
+            // NOTE(SpectatorQL): 0b00000011
+            SelectionMask = SELECTION_TOURNAMENT | SELECTION_ROULETTE,
+            // NOTE(SpectatorQL): 0b00001100
+            CrossoverMask = CROSSOVER_PMX | CROSSOVER_OX,
         }
 
         static bool ParseCmdArguments(string[] args, ref string error)
         {
             bool result = false;
 
-            if((args != null) && (args.Length != 0))
+            if((args != null) || (args.Length != 0))
             {
-                for(int i = 0;
+                _file = args[0];
+
+                for(int i = 1;
                     i < args.Length;
                     ++i)
                 {
@@ -374,7 +365,7 @@ namespace Berlin
 
                         default:
                         {
-                            Debug.WriteLine("Unrecognized parameter: \"{0}\"", arg);
+                            Console.WriteLine("Unrecognized parameter: \"{0}\"", arg);
                             break;
                         }
                     }
@@ -384,8 +375,8 @@ namespace Berlin
                 byte crossoverMask = (byte)Flags.CrossoverMask;
                 byte selectionFlags = (byte)((byte)_flags & selectionMask);
                 byte crossoverFlags = (byte)((byte)_flags & crossoverMask);
-                if(((byte)_flags != 0)
 
+                if(((byte)_flags != 0)
                     && ((selectionFlags & (selectionFlags -1)) == 0)
                     && (selectionFlags != 0)
 
@@ -410,23 +401,19 @@ namespace Berlin
         static void Main(string[] args)
         {
             const int M = 40;
-            const int K = 3;
             const double MUTATION_CHANCE = 0.04;
 
             string header;
             int dataLen;
             int[,] data;
-
-            /*
-                NOTE(SpectatorQL): Stackalloc may be a good option, but I'm not sure
-                whether using it would incur any constraints on passing the
-                population as an argument to functions.
-            */
+            
             int[,] population;
             int[] fitnessValues;
 
+
 #if BERLIN_DEBUG
             _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
+            _file = "data\\berlin52.txt";
 #else
             string error = null;
             if(!ParseCmdArguments(args, ref error))
@@ -436,13 +423,7 @@ namespace Berlin
             }
 #endif
 
-#if false
-            string file = "data\\berlinDebug.txt";
-#else
-            string file = "data\\berlin52.txt";
-#endif
-
-            using(FileStream stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using(FileStream stream = new FileStream(_file, FileMode.Open, FileAccess.Read, FileShare.Read))
             using(StreamReader reader = new StreamReader(stream))
             {
                 header = reader.ReadLine();
@@ -493,36 +474,29 @@ namespace Berlin
             EvaluateFitness(data, population, M, dataLen, fitnessValues);
 
 
+            int[] selected = new int[M];
             while(Continue(population, fitnessValues, M, dataLen))
             {
                 Debug_StartTimer();
 
-                int[,] newPopulation = new int[M, dataLen];
-                int[] selected = new int[M];
-
                 if(_flags.HasFlag(Flags.SELECTION_TOURNAMENT))
                 {
-                    TournamentSelect(selected, fitnessValues, M, K);
+                    TournamentSelect(selected, fitnessValues, M);
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
-                    /*
-                        TODO: Sort the population.
-                        NOTE(SpectatorQL): In order for RouletteSelect to work the
-                        population needs to be sorted based on the fitness values.
-                        Which sucks, because I end up calling EvaluateFitness twice.
-                        But if I don't do that then the algorithm gets wild.
-                    */
                     RouletteSelect(selected, fitnessValues, M);
                 }
                 else
                 {
                     throw new NullReferenceException();
                 }
-
-                int i = 0;
-                while(i < M)
+                
+                for(int i = 0;
+                    i < M;
+                    i += 2)
                 {
+                    // NOTE(SpectatorQL): Use pointers instead of copying?
                     int[] parent1 = new int[dataLen];
                     int[] parent2 = new int[dataLen];
                     int p1 = i;
@@ -551,55 +525,51 @@ namespace Berlin
                         rightCut = _rand.Next(midPoint, dataLen - 1);
                     }
 
-                    int[] child1 = null;
-                    int[] child2 = null;
 
-                    // TODO: Multithreading
+                    int[] child1 = new int[dataLen];
+                    int[] child2 = new int[dataLen];
+                    
                     if(_flags.HasFlag(Flags.CROSSOVER_PMX))
                     {
-                        child1 = PMXCrossover(parent1, parent2, leftCut, rightCut, dataLen);
-                        child2 = PMXCrossover(parent2, parent1, leftCut, rightCut, dataLen);
+                        PMXCrossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
+                        PMXCrossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
                     }
                     else if(_flags.HasFlag(Flags.CROSSOVER_OX))
                     {
-                        child1 = OXCrossover(parent1, parent2, leftCut, rightCut, dataLen);
-                        child2 = OXCrossover(parent2, parent1, leftCut, rightCut, dataLen);
+                        OXCrossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
+                        OXCrossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
                     }
                     else
                     {
                         throw new NullReferenceException();
                     }
+                    
 
-                    // TODO: Multithreading
-                    // TODO: Fix these calculations
-                    double divisor = 1000.0;
-                    double d = _rand.Next(101) / divisor;
-                    if(d > MUTATION_CHANCE)
+                    int range = 1000;
+                    double d = _rand.Next(range) / (double)range;
+                    if(MUTATION_CHANCE >= d)
                     {
-                        ++_timesMutated;
+                        ++_mutations;
                         Mutate(child1, dataLen);
                     }
 
-                    d = _rand.Next(101) / divisor;
-                    if(d > MUTATION_CHANCE)
+                    d = _rand.Next(range) / (double)range;
+                    if(MUTATION_CHANCE >= d)
                     {
-                        ++_timesMutated;
+                        ++_mutations;
                         Mutate(child2, dataLen);
                     }
 
-                    // NOTE(SpectatorQL): I could probably just overwrite the original population at this point.
+                    
                     for(int j = 0;
                         j < dataLen;
                         ++j)
                     {
-                        newPopulation[p1, j] = child1[j];
-                        newPopulation[p2, j] = child2[j];
+                        population[p1, j] = child1[j];
+                        population[p2, j] = child2[j];
                     }
-
-                    i += 2;
                 }
-
-                population = newPopulation;
+                
                 EvaluateFitness(data, population, M, dataLen, fitnessValues);
                 
                 Debug_StopTimer();
