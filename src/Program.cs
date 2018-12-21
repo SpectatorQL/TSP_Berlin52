@@ -184,9 +184,7 @@ namespace Berlin
             }
 
             int crossLen = (rightCut - leftCut) + 1;
-            // TODO: stackalloc
             int[] crossSection = new int[crossLen];
-
             Array.Copy(child, leftCut, crossSection, 0, crossLen);
             Array.Sort(crossSection);
             
@@ -206,7 +204,7 @@ namespace Berlin
                     }
 
                     int node = p2[j];
-                    if(!NodeIsInCrossSection(node, crossSection))
+                    if(NodeOutsideCrossSection(node, crossSection))
                     {
                         child[i] = node;
                         --nodesToCopy;
@@ -221,24 +219,14 @@ namespace Berlin
             }
         }
 
-        /*
-            TODO: Binary search!
-            NOTE(SpectatorQL): At the moment this thing is pretty fast, but
-            binary search will probably make it even faster.
-        */
-        static bool NodeIsInCrossSection(int node, int[] crossSection)
+        static bool NodeOutsideCrossSection(int node, int[] crossSection)
         {
             bool result = false;
 
-            for(int i = 0;
-                i < crossSection.Length;
-                ++i)
+            int bsResult = Array.BinarySearch(crossSection, node);
+            if(bsResult < 0)
             {
-                if(crossSection[i] == node)
-                {
-                    result = true;
-                    return result;
-                }
+                result = true;
             }
 
             return result;
@@ -246,7 +234,6 @@ namespace Berlin
 
         static void Mutate(int[] child, int dataLen)
         {
-            // TODO: stackalloc
             const int LEN = 3;
             int[] nodesToMutate = new int[LEN]
             {
@@ -427,7 +414,7 @@ namespace Berlin
 
 
 #if BERLIN_DEBUG
-            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
+            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
             _file = "data\\berlin52.txt";
             _m = 40;
 #else
