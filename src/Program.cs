@@ -16,6 +16,8 @@ namespace Berlin
         static int _m;
         const double MUTATION_CHANCE = 0.04;
 
+        static bool _running = true;
+
         static uint _i = 0;
         static ulong _mutations = 0;
         static StringBuilder _outputSB = new StringBuilder();
@@ -259,46 +261,52 @@ namespace Berlin
         {
             if(_i % 1000 == 0)
             {
-                int bestVal = fitVals[0];
-                int bestValIdx = 0;
-                for(int i = 1;
-                    i < m;
-                    ++i)
-                {
-                    int val = fitVals[i];
-                    if(val < bestVal)
-                    {
-                        bestVal = val;
-                        bestValIdx = i;
-                    }
-                }
-                
-                _outputSB.Clear();
-                for(int i = 0;
-                    i < dataLen;
-                    ++i)
-                {
-                    int node = pop[bestValIdx, i];
-                    _outputSB.Append(node);
-                    _outputSB.Append('-');
-                }
-
-                string output = string.Format("Iterations:{0} Mutations:{1} Best value:{2}\nBest path:{3}\n",
-                    _i,
-                    _mutations,
-                    bestVal,
-                    _outputSB.ToString());
-                Console.WriteLine(output);
+                PrintOutput(pop, fitVals, m, dataLen);
             }
-
-            if(_i++ < uint.MaxValue)
-            {
-                return true;
-            }
-            else
+            
+            if(_i == uint.MaxValue)
             {
                 return false;
             }
+            else
+            {
+                ++_i;
+                return _running;
+            }
+        }
+
+        static void PrintOutput(int[,] pop, int[] fitVals, int m, int dataLen)
+        {
+            int bestVal = fitVals[0];
+            int bestValIdx = 0;
+            for(int i = 1;
+                i < m;
+                ++i)
+            {
+                int val = fitVals[i];
+                if(val < bestVal)
+                {
+                    bestVal = val;
+                    bestValIdx = i;
+                }
+            }
+
+            _outputSB.Clear();
+            for(int i = 0;
+                i < dataLen;
+                ++i)
+            {
+                int node = pop[bestValIdx, i];
+                _outputSB.Append(node);
+                _outputSB.Append('-');
+            }
+
+            string output = string.Format("Iterations:{0} Mutations:{1} Best value:{2}\nBest path:{3}\n",
+                _i,
+                _mutations,
+                bestVal,
+                _outputSB.ToString());
+            Console.WriteLine(output);
         }
 
         enum Flags : byte
@@ -412,9 +420,15 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
+            // NOTE(SpectatorQL): Ctrl + C stops the program.
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                _running = false;
+                e.Cancel = true;
+            };
 
 #if BERLIN_DEBUG
-            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_OX;
+            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
             _file = "data\\berlin52.txt";
             _m = 40;
 #else
@@ -572,8 +586,9 @@ namespace Berlin
                 
                 Debug_StopTimer();
             }
-            
-            // NOTE(SpectatorQL): Never gets here?
+
+            PrintOutput(population, fitnessValues, _m, dataLen);
+            Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
         }
     }
