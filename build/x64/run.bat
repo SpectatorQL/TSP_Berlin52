@@ -1,10 +1,9 @@
 @echo off
 
 set data="data\\berlin52.txt"
-REM Available parameters = -tournament, -roulette
+set populationSize=40
 set selection=tournament
-REM Available parameters = -PMX, -OX
 set crossover=PMX
 
 @echo on
-start "TSP_Berlin52" Berlin.exe %data% -%selection% -%crossover%
+start "TSP_Berlin52" Berlin.exe %data% %populationSize% -%selection% -%crossover%

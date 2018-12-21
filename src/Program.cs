@@ -13,7 +13,9 @@ namespace Berlin
 
         static Flags _flags;
         static string _file;
-        
+        static int _m;
+        const double MUTATION_CHANCE = 0.04;
+
         static uint _i = 0;
         static ulong _mutations = 0;
         static StringBuilder _outputSB = new StringBuilder();
@@ -38,19 +40,19 @@ namespace Berlin
             }
         }
 
-        static void TournamentSelect(int[] selected, int[] fitVals, int M)
+        static void TournamentSelect(int[] selected, int[] fitVals, int m)
         {
             const int K = 3;
             for(int i = 0;
-                i < M;
+                i < m;
                 ++i)
             {
-                int bestSpecimen = _rand.Next(0, M);
+                int bestSpecimen = _rand.Next(0, m);
                 for(int j = 0;
                     j < K;
                     ++j)
                 {
-                    int nextSpecimen = _rand.Next(0, M);
+                    int nextSpecimen = _rand.Next(0, m);
                     if(fitVals[nextSpecimen] < fitVals[bestSpecimen])
                     {
                         bestSpecimen = nextSpecimen;
@@ -61,11 +63,11 @@ namespace Berlin
             }
         }
 
-        static void RouletteSelect(int[] selected, int[] fitVals, int M)
+        static void RouletteSelect(int[] selected, int[] fitVals, int m)
         {
-            int fitnessSum = ArraySum(fitVals, M);
+            int fitnessSum = ArraySum(fitVals, m);
             for(int i = 0;
-                i < M;
+                i < m;
                 ++i)
             {
                 int j = 0;
@@ -266,14 +268,14 @@ namespace Berlin
             }
         }
 
-        static bool Continue(int[,] pop, int[] fitVals, int M, int dataLen)
+        static bool Continue(int[,] pop, int[] fitVals, int m, int dataLen)
         {
             if(_i % 1000 == 0)
             {
                 int bestVal = fitVals[0];
                 int bestValIdx = 0;
                 for(int i = 1;
-                    i < M;
+                    i < m;
                     ++i)
                 {
                     int val = fitVals[i];
@@ -332,62 +334,78 @@ namespace Berlin
 
             if((args != null) || (args.Length != 0))
             {
-                _file = args[0];
-
-                for(int i = 1;
-                    i < args.Length;
-                    ++i)
+                string file = args[0];
+                if(File.Exists(file))
                 {
-                    string arg = args[i];
-                    switch(arg)
+                    _file = args[0];
+
+                    bool parseSuccess = int.TryParse(args[1], out _m);
+                    if(parseSuccess)
                     {
-                        case "-tournament":
+                        for(int i = 2;
+                            i < args.Length;
+                            ++i)
                         {
-                            _flags |= Flags.SELECTION_TOURNAMENT;
-                            break;
-                        }
-                        case "-roulette":
-                        {
-                            _flags |= Flags.SELECTION_ROULETTE;
-                            break;
-                        }
-                        
-                        case "-PMX":
-                        {
-                            _flags |= Flags.CROSSOVER_PMX;
-                            break;
-                        }
-                        case "-OX":
-                        {
-                            _flags |= Flags.CROSSOVER_OX;
-                            break;
+                            string arg = args[i];
+                            switch(arg)
+                            {
+                                case "-tournament":
+                                {
+                                    _flags |= Flags.SELECTION_TOURNAMENT;
+                                    break;
+                                }
+                                case "-roulette":
+                                {
+                                    _flags |= Flags.SELECTION_ROULETTE;
+                                    break;
+                                }
+
+                                case "-PMX":
+                                {
+                                    _flags |= Flags.CROSSOVER_PMX;
+                                    break;
+                                }
+                                case "-OX":
+                                {
+                                    _flags |= Flags.CROSSOVER_OX;
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    Console.WriteLine("Unrecognized parameter: \"{0}\"", arg);
+                                    break;
+                                }
+                            }
                         }
 
-                        default:
+                        byte selectionMask = (byte)Flags.SelectionMask;
+                        byte crossoverMask = (byte)Flags.CrossoverMask;
+                        byte selectionFlags = (byte)((byte)_flags & selectionMask);
+                        byte crossoverFlags = (byte)((byte)_flags & crossoverMask);
+
+                        if(((byte)_flags != 0)
+                            && ((selectionFlags & (selectionFlags - 1)) == 0)
+                            && (selectionFlags != 0)
+
+                            && ((crossoverFlags & (crossoverFlags - 1)) == 0)
+                            && (crossoverFlags != 0))
                         {
-                            Console.WriteLine("Unrecognized parameter: \"{0}\"", arg);
-                            break;
+                            result = true;
+                        }
+                        else
+                        {
+                            error = "Error. Invalid parameters.";
                         }
                     }
-                }
-                
-                byte selectionMask = (byte)Flags.SelectionMask;
-                byte crossoverMask = (byte)Flags.CrossoverMask;
-                byte selectionFlags = (byte)((byte)_flags & selectionMask);
-                byte crossoverFlags = (byte)((byte)_flags & crossoverMask);
-
-                if(((byte)_flags != 0)
-                    && ((selectionFlags & (selectionFlags -1)) == 0)
-                    && (selectionFlags != 0)
-
-                    && ((crossoverFlags & (crossoverFlags - 1)) == 0)
-                    && (crossoverFlags != 0))
-                {
-                    result = true;
+                    else
+                    {
+                        error = "Error. Incorrect population size.";
+                    }
                 }
                 else
                 {
-                    error = "Error. Invalid parameters.";
+                    error = "Error. File " + file + " not found.";
                 }
             }
             else
@@ -400,9 +418,6 @@ namespace Berlin
 
         static void Main(string[] args)
         {
-            const int M = 40;
-            const double MUTATION_CHANCE = 0.04;
-
             string header;
             int dataLen;
             int[,] data;
@@ -414,6 +429,7 @@ namespace Berlin
 #if BERLIN_DEBUG
             _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
             _file = "data\\berlin52.txt";
+            _m = 40;
 #else
             string error = null;
             if(!ParseCmdArguments(args, ref error))
@@ -439,7 +455,7 @@ namespace Berlin
                         .Split(' ');
 
                     for(int j = 0;
-                        j < i;
+                        j <= i;
                         ++j)
                     {
                         int val = int.Parse(line[j]);
@@ -449,10 +465,10 @@ namespace Berlin
                 }
             }
 
-            population = new int[M, dataLen];
-            fitnessValues = new int[M];
+            population = new int[_m, dataLen];
+            fitnessValues = new int[_m];
             for(int i = 0;
-                i < M;
+                i < _m;
                 ++i)
             {
                 int j = 0;
@@ -471,21 +487,21 @@ namespace Berlin
                     population[i, swapIdx] = a;
                 }
             }
-            EvaluateFitness(data, population, M, dataLen, fitnessValues);
+            EvaluateFitness(data, population, _m, dataLen, fitnessValues);
 
 
-            int[] selected = new int[M];
-            while(Continue(population, fitnessValues, M, dataLen))
+            int[] selected = new int[_m];
+            while(Continue(population, fitnessValues, _m, dataLen))
             {
                 Debug_StartTimer();
 
                 if(_flags.HasFlag(Flags.SELECTION_TOURNAMENT))
                 {
-                    TournamentSelect(selected, fitnessValues, M);
+                    TournamentSelect(selected, fitnessValues, _m);
                 }
                 else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
                 {
-                    RouletteSelect(selected, fitnessValues, M);
+                    RouletteSelect(selected, fitnessValues, _m);
                 }
                 else
                 {
@@ -493,7 +509,7 @@ namespace Berlin
                 }
                 
                 for(int i = 0;
-                    i < M;
+                    i < _m;
                     i += 2)
                 {
                     // NOTE(SpectatorQL): Use pointers instead of copying?
@@ -512,13 +528,8 @@ namespace Berlin
 
                     int leftCut = -1;
                     int rightCut = -1;
-                    // NOTE(SpectatorQL): I could probably use dataLen to calculate this. We'll see.
-#if false
-                    int dist = 1;
-#else
-                    int dist = 10;
-#endif
-                    while(dist > (rightCut - leftCut))
+                    int minLen = 10;
+                    while(minLen > (rightCut - leftCut))
                     {
                         int midPoint = dataLen / 2;
                         leftCut = _rand.Next(1, midPoint);
@@ -570,7 +581,7 @@ namespace Berlin
                     }
                 }
                 
-                EvaluateFitness(data, population, M, dataLen, fitnessValues);
+                EvaluateFitness(data, population, _m, dataLen, fitnessValues);
                 
                 Debug_StopTimer();
             }
