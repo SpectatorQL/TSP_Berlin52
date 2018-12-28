@@ -10,7 +10,7 @@ namespace Berlin
     delegate void op_selection(int[] selected, int[] fitnessValues, int m);
     delegate void op_crossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen);
 
-    class Settings
+    class ProgramSettings
     {
         public string DataFile;
         public int M;
@@ -311,7 +311,7 @@ namespace Berlin
             Console.WriteLine(output);
         }
 
-        static bool ParseCommandLine(string[] args, Settings settings, ref string error)
+        static bool ParseCommandLine(string[] args, ProgramSettings settings, ref string error)
         {
             bool result = false;
 
@@ -322,66 +322,80 @@ namespace Berlin
                 {
                     settings.DataFile = args[0];
 
-                    bool parseSuccess = int.TryParse(args[1], out settings.M)
-                        && double.TryParse(args[2], out settings.MutationChance);
-                    if(parseSuccess)
+                    bool popSizeParseSuccess = int.TryParse(args[1], out settings.M);
+                    if(popSizeParseSuccess)
                     {
-                        for(int i = 3;
-                            i < args.Length;
-                            ++i)
+                        /*
+                            NOTE(SpectatorQL): Enables the use of a dot in run.bat,
+                            instead of the culture-specific decimal point character.
+                        */
+                        bool mutationChanceParseSuccess = double.TryParse(args[2],
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out settings.MutationChance);
+                        if(mutationChanceParseSuccess)
                         {
-                            string arg = args[i];
-                            switch(arg)
+                            for(int i = 3;
+                                i < args.Length;
+                                ++i)
                             {
-                                case "-tournament":
+                                string arg = args[i];
+                                switch(arg)
                                 {
-                                    settings.Selection = TournamentSelect;
-                                    break;
-                                }
-                                case "-roulette":
-                                {
-                                    settings.Selection = RouletteSelect;
-                                    break;
-                                }
+                                    case "-tournament":
+                                    {
+                                        settings.Selection = TournamentSelect;
+                                        break;
+                                    }
+                                    case "-roulette":
+                                    {
+                                        settings.Selection = RouletteSelect;
+                                        break;
+                                    }
 
-                                case "-PMX":
-                                {
-                                    settings.Crossover = PMXCrossover;
-                                    break;
-                                }
-                                case "-OX":
-                                {
-                                    settings.Crossover = OXCrossover;
-                                    break;
-                                }
+                                    case "-PMX":
+                                    {
+                                        settings.Crossover = PMXCrossover;
+                                        break;
+                                    }
+                                    case "-OX":
+                                    {
+                                        settings.Crossover = OXCrossover;
+                                        break;
+                                    }
 
-                                default:
-                                {
-                                    Console.WriteLine("Unrecognized parameter: \"{0}\"", arg);
-                                    break;
+                                    default:
+                                    {
+                                        Console.WriteLine("Unrecognized parameter: \"{0}\"", arg);
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        
-                        if(settings.Selection != null)
-                        {
-                            if(settings.Crossover != null)
+
+                            if(settings.Selection != null)
                             {
-                                result = true;
+                                if(settings.Crossover != null)
+                                {
+                                    result = true;
+                                }
+                                else
+                                {
+                                    error = "Error. Invalid crossover parameter.";
+                                }
                             }
                             else
                             {
-                                error = "Error. Invalid crossover parameter.";
+                                error = "Error. Invalid selection parameter.";
                             }
                         }
                         else
                         {
-                            error = "Error. Invalid selection parameter.";
+                            error = "Error. Incorrect mutation chance (expected double)";
                         }
                     }
                     else
                     {
-                        error = "Error. Incorrect population size (expected int) or incorrect mutation chance (expected double).";
+                        error = "Error. Incorrect population size (expected int).";
                     }
                 }
                 else
@@ -413,11 +427,11 @@ namespace Berlin
                 e.Cancel = true;
             };
 
-            Settings settings = new Settings();
+            ProgramSettings settings = new ProgramSettings();
 
 #if BERLIN_DEBUG
             settings.DataFile = "data\\berlin52.txt";
-            settings.M = 40;
+            settings.M = 1000;
             settings.MutationChance = 0.04;
             settings.Selection = TournamentSelect;
             settings.Crossover = PMXCrossover;
@@ -456,12 +470,14 @@ namespace Berlin
                 }
 
             }
-            
-            settings.NodesToMutate = (dataLen / 10) + (dataLen % 10);
 
             int m = settings.M;
+            double mutationChance = settings.MutationChance;
             op_selection Selection = settings.Selection;
             op_crossover Crossover = settings.Crossover;
+
+            // TODO: Fix this. Maybe put it in the settings as well?
+            settings.NodesToMutate = (dataLen / 10) + (dataLen % 10);
 
             population = new int[m, dataLen];
             fitnessValues = new int[m];
@@ -487,6 +503,7 @@ namespace Berlin
             }
             EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
+            PrintOutput(population, fitnessValues, m, dataLen);
 
             int[] selected = new int[m];
             while(Continue())
@@ -527,19 +544,19 @@ namespace Berlin
                     int[] child1 = new int[dataLen];
                     int[] child2 = new int[dataLen];
                     Crossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
-                    Crossover(child1, parent2, parent1, leftCut, rightCut, dataLen);
+                    Crossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
 
 
                     int range = 1000;
                     double d = _rand.Next(range) / (double)range;
-                    if(settings.MutationChance >= d)
+                    if(mutationChance >= d)
                     {
                         ++_mutations;
                         Mutate(child1, dataLen, settings.NodesToMutate);
                     }
 
                     d = _rand.Next(range) / (double)range;
-                    if(settings.MutationChance >= d)
+                    if(mutationChance >= d)
                     {
                         ++_mutations;
                         Mutate(child2, dataLen, settings.NodesToMutate);
