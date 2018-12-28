@@ -7,15 +7,23 @@ using static Berlin.Utils;
 
 namespace Berlin
 {
+    delegate void op_selection(int[] selected, int[] fitnessValues, int m);
+    delegate void op_crossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen);
+
+    class Settings
+    {
+        public string DataFile;
+        public int M;
+        public double MutationChance;
+        public int NodesToMutate;
+
+        public op_selection Selection;
+        public op_crossover Crossover;
+    }
+
     class Program
     {
         static Random _rand = new Random();
-
-        static Flags _flags;
-        static string _file;
-        static int _m;
-        static double _mutationChance;
-        static int _nodesToMutate;
 
         static bool _running = true;
 
@@ -85,7 +93,7 @@ namespace Berlin
             }
         }
 
-        static void PMXCrossover(int[]child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        static void PMXCrossover(int[] child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
         {
             for(int i = leftCut;
                 i <= rightCut;
@@ -113,14 +121,14 @@ namespace Berlin
 
             List<int> freeIndices = new List<int>();
             FreeIndices(freeIndices, p1, p2, leftCut, rightCut);
-            
+
             for(int i = 0;
                 i < freeIndices.Count;
                 ++i)
             {
                 int freeIndex = freeIndices[i];
                 int nodeToCopy = p2[freeIndex];
-                
+
                 int copyIndex = freeIndex;
                 do
                 {
@@ -136,7 +144,7 @@ namespace Berlin
                         }
                     }
                 } while(IndexInsideCrossSection(copyIndex, leftCut, rightCut));
-                
+
                 child[copyIndex] = nodeToCopy;
             }
         }
@@ -187,7 +195,7 @@ namespace Berlin
             int[] crossSection = new int[crossLen];
             Array.Copy(child, leftCut, crossSection, 0, crossLen);
             Array.Sort(crossSection);
-            
+
             int nodesToCopy = dataLen - crossLen;
             {
                 int i = rightCut + 1;
@@ -293,7 +301,7 @@ namespace Berlin
                 _outputSB.Append(node);
                 _outputSB.Append('-');
             }
-            
+
             string output = string.Format("Iterations:{0} Mutations:{1} Best value:{2}\n"
                 + "Best path:{3}\n",
                 _i,
@@ -303,22 +311,7 @@ namespace Berlin
             Console.WriteLine(output);
         }
 
-        enum Flags : byte
-        {
-            SELECTION_TOURNAMENT = 0x01,
-            SELECTION_ROULETTE = 0x02,
-
-            CROSSOVER_PMX = 0x04,
-            CROSSOVER_OX = 0x08,
-
-            // NOTE(SpectatorQL): 0b00000011
-            SelectionMask = SELECTION_TOURNAMENT | SELECTION_ROULETTE,
-            // NOTE(SpectatorQL): 0b00001100
-            CrossoverMask = CROSSOVER_PMX | CROSSOVER_OX,
-        }
-
-        // TODO: Refactor this mess.
-        static bool ParseCmdArguments(string[] args, ref string error)
+        static bool ParseCommandLine(string[] args, Settings settings, ref string error)
         {
             bool result = false;
 
@@ -327,12 +320,13 @@ namespace Berlin
                 string file = args[0];
                 if(File.Exists(file))
                 {
-                    _file = args[0];
+                    settings.DataFile = args[0];
 
-                    bool parseSuccess = int.TryParse(args[1], out _m);
+                    bool parseSuccess = int.TryParse(args[1], out settings.M)
+                        && double.TryParse(args[2], out settings.MutationChance);
                     if(parseSuccess)
                     {
-                        for(int i = 2;
+                        for(int i = 3;
                             i < args.Length;
                             ++i)
                         {
@@ -341,23 +335,23 @@ namespace Berlin
                             {
                                 case "-tournament":
                                 {
-                                    _flags |= Flags.SELECTION_TOURNAMENT;
+                                    settings.Selection = TournamentSelect;
                                     break;
                                 }
                                 case "-roulette":
                                 {
-                                    _flags |= Flags.SELECTION_ROULETTE;
+                                    settings.Selection = RouletteSelect;
                                     break;
                                 }
 
                                 case "-PMX":
                                 {
-                                    _flags |= Flags.CROSSOVER_PMX;
+                                    settings.Crossover = PMXCrossover;
                                     break;
                                 }
                                 case "-OX":
                                 {
-                                    _flags |= Flags.CROSSOVER_OX;
+                                    settings.Crossover = OXCrossover;
                                     break;
                                 }
 
@@ -368,29 +362,26 @@ namespace Berlin
                                 }
                             }
                         }
-
-                        byte selectionMask = (byte)Flags.SelectionMask;
-                        byte crossoverMask = (byte)Flags.CrossoverMask;
-                        byte selectionFlags = (byte)((byte)_flags & selectionMask);
-                        byte crossoverFlags = (byte)((byte)_flags & crossoverMask);
-
-                        if(((byte)_flags != 0)
-                            && ((selectionFlags & (selectionFlags - 1)) == 0)
-                            && (selectionFlags != 0)
-
-                            && ((crossoverFlags & (crossoverFlags - 1)) == 0)
-                            && (crossoverFlags != 0))
+                        
+                        if(settings.Selection != null)
                         {
-                            result = true;
+                            if(settings.Crossover != null)
+                            {
+                                result = true;
+                            }
+                            else
+                            {
+                                error = "Error. Invalid crossover parameter.";
+                            }
                         }
                         else
                         {
-                            error = "Error. Invalid parameters.";
+                            error = "Error. Invalid selection parameter.";
                         }
                     }
                     else
                     {
-                        error = "Error. Incorrect population size.";
+                        error = "Error. Incorrect population size (expected int) or incorrect mutation chance (expected double).";
                     }
                 }
                 else
@@ -422,20 +413,24 @@ namespace Berlin
                 e.Cancel = true;
             };
 
+            Settings settings = new Settings();
+
 #if BERLIN_DEBUG
-            _flags |= Flags.SELECTION_TOURNAMENT | Flags.CROSSOVER_PMX;
-            _file = "data\\berlin52.txt";
-            _m = 40;
+            settings.DataFile = "data\\berlin52.txt";
+            settings.M = 40;
+            settings.MutationChance = 0.04;
+            settings.Selection = TournamentSelect;
+            settings.Crossover = PMXCrossover;
 #else
             string error = null;
-            if(!ParseCmdArguments(args, ref error))
+            if(!ParseCommandLine(args, settings, ref error))
             {
                 Console.WriteLine(error);
                 throw new NullReferenceException();
             }
 #endif
 
-            using(FileStream stream = new FileStream(_file, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using(FileStream stream = new FileStream(settings.DataFile, FileMode.Open, FileAccess.Read, FileShare.Read))
             using(StreamReader reader = new StreamReader(stream))
             {
                 header = reader.ReadLine();
@@ -461,18 +456,17 @@ namespace Berlin
                 }
 
             }
+            
+            settings.NodesToMutate = (dataLen / 10) + (dataLen % 10);
 
-            int range = 1000;
-            double chance = _m / (double)range;
-            double maxChance = 0.15;
-            _mutationChance = (chance < maxChance) ? chance : maxChance;
+            int m = settings.M;
+            op_selection Selection = settings.Selection;
+            op_crossover Crossover = settings.Crossover;
 
-            _nodesToMutate = (dataLen / 10) + (dataLen % 10);
-
-            population = new int[_m, dataLen];
-            fitnessValues = new int[_m];
+            population = new int[m, dataLen];
+            fitnessValues = new int[m];
             for(int i = 0;
-                i < _m;
+                i < m;
                 ++i)
             {
                 int j = 0;
@@ -491,29 +485,18 @@ namespace Berlin
                     population[i, swapIdx] = a;
                 }
             }
-            EvaluateFitness(data, population, _m, dataLen, fitnessValues);
+            EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
 
-            int[] selected = new int[_m];
+            int[] selected = new int[m];
             while(Continue())
             {
                 Debug_StartTimer();
 
-                if(_flags.HasFlag(Flags.SELECTION_TOURNAMENT))
-                {
-                    TournamentSelect(selected, fitnessValues, _m);
-                }
-                else if(_flags.HasFlag(Flags.SELECTION_ROULETTE))
-                {
-                    RouletteSelect(selected, fitnessValues, _m);
-                }
-                else
-                {
-                    throw new NullReferenceException();
-                }
+                Selection(selected, fitnessValues, m);
                 
                 for(int i = 0;
-                    i < _m;
+                    i < m;
                     i += 2)
                 {
                     int[] parent1 = new int[dataLen];
@@ -543,35 +526,23 @@ namespace Berlin
 
                     int[] child1 = new int[dataLen];
                     int[] child2 = new int[dataLen];
-                    
-                    if(_flags.HasFlag(Flags.CROSSOVER_PMX))
-                    {
-                        PMXCrossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
-                        PMXCrossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
-                    }
-                    else if(_flags.HasFlag(Flags.CROSSOVER_OX))
-                    {
-                        OXCrossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
-                        OXCrossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
-                    }
-                    else
-                    {
-                        throw new NullReferenceException();
-                    }
-                    
-                    
+                    Crossover(child1, parent1, parent2, leftCut, rightCut, dataLen);
+                    Crossover(child1, parent2, parent1, leftCut, rightCut, dataLen);
+
+
+                    int range = 1000;
                     double d = _rand.Next(range) / (double)range;
-                    if(_mutationChance >= d)
+                    if(settings.MutationChance >= d)
                     {
                         ++_mutations;
-                        Mutate(child1, dataLen, _nodesToMutate);
+                        Mutate(child1, dataLen, settings.NodesToMutate);
                     }
 
                     d = _rand.Next(range) / (double)range;
-                    if(_mutationChance >= d)
+                    if(settings.MutationChance >= d)
                     {
                         ++_mutations;
-                        Mutate(child2, dataLen, _nodesToMutate);
+                        Mutate(child2, dataLen, settings.NodesToMutate);
                     }
 
                     
@@ -584,17 +555,17 @@ namespace Berlin
                     }
                 }
                 
-                EvaluateFitness(data, population, _m, dataLen, fitnessValues);
+                EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
                 if(_i % 1000 == 0)
                 {
-                    PrintOutput(population, fitnessValues, _m, dataLen);
+                    PrintOutput(population, fitnessValues, m, dataLen);
                 }
 
                 Debug_StopTimer();
             }
 
-            PrintOutput(population, fitnessValues, _m, dataLen);
+            PrintOutput(population, fitnessValues, m, dataLen);
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
         }
