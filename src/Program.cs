@@ -110,8 +110,9 @@ namespace Berlin
 
                 child[i] = p2[i];
             }
-            
-            List<int> freeIndices = FreeIndices(p1, p2, leftCut, rightCut);
+
+            List<int> freeIndices = new List<int>();
+            FreeIndices(freeIndices, p1, p2, leftCut, rightCut);
             
             for(int i = 0;
                 i < freeIndices.Count;
@@ -140,10 +141,8 @@ namespace Berlin
             }
         }
 
-        static List<int> FreeIndices(int[] p1, int[] p2, int leftCut, int rightCut)
+        static void FreeIndices(List<int> indices, int[] p1, int[] p2, int leftCut, int rightCut)
         {
-            List<int> indices = new List<int>();
-            
             for(int i = leftCut;
                 i <= rightCut;
                 ++i)
@@ -167,8 +166,6 @@ namespace Berlin
                     indices.Add(i);
                 }
             }
-
-            return indices;
         }
 
         static bool IndexInsideCrossSection(int idx, int start, int end)
@@ -258,13 +255,8 @@ namespace Berlin
             }
         }
 
-        static bool Continue(int[,] pop, int[] fitVals, int m, int dataLen)
+        static bool Continue()
         {
-            if(_i % 1000 == 0)
-            {
-                PrintOutput(pop, fitVals, m, dataLen);
-            }
-            
             if(_i == uint.MaxValue)
             {
                 return false;
@@ -325,6 +317,7 @@ namespace Berlin
             CrossoverMask = CROSSOVER_PMX | CROSSOVER_OX,
         }
 
+        // TODO: Refactor this mess.
         static bool ParseCmdArguments(string[] args, ref string error)
         {
             bool result = false;
@@ -502,7 +495,7 @@ namespace Berlin
 
 
             int[] selected = new int[_m];
-            while(Continue(population, fitnessValues, _m, dataLen))
+            while(Continue())
             {
                 Debug_StartTimer();
 
@@ -523,7 +516,6 @@ namespace Berlin
                     i < _m;
                     i += 2)
                 {
-                    // NOTE(SpectatorQL): Use pointers instead of copying?
                     int[] parent1 = new int[dataLen];
                     int[] parent2 = new int[dataLen];
                     int p1 = i;
@@ -537,9 +529,10 @@ namespace Berlin
                         parent2[j] = population[selected[p2], j];
                     }
 
+
                     int leftCut = -1;
                     int rightCut = -1;
-                    int minLen = 10;
+                    int minLen = dataLen / 4;
                     while(minLen > (rightCut - leftCut))
                     {
                         int midPoint = dataLen / 2;
@@ -592,7 +585,12 @@ namespace Berlin
                 }
                 
                 EvaluateFitness(data, population, _m, dataLen, fitnessValues);
-                
+
+                if(_i % 1000 == 0)
+                {
+                    PrintOutput(population, fitnessValues, _m, dataLen);
+                }
+
                 Debug_StopTimer();
             }
 
