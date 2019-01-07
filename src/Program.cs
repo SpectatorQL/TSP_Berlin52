@@ -132,12 +132,12 @@ namespace Berlin
                 int copyIndex = freeIndex;
                 do
                 {
-                    int searchedNode = p1[copyIndex];
+                    int oppositeNode = p1[copyIndex];
                     for(int j = 0;
                         j < dataLen;
                         ++j)
                     {
-                        if(p2[j] == searchedNode)
+                        if(p2[j] == oppositeNode)
                         {
                             copyIndex = j;
                             break;
@@ -494,6 +494,17 @@ namespace Berlin
 
             }
 
+#if BERLIN_DEBUG
+            int dataLenSum = 0;
+
+            for(int i = 0;
+                i < dataLen;
+                ++i)
+            {
+                dataLenSum += i;
+            }
+#endif
+
             int m = settings.M;
             double mutationChance = settings.MutationChance;
             op_selection Selection = settings.Selection;
@@ -587,7 +598,11 @@ namespace Berlin
                         ++_mutations;
                     }
 
-                    
+#if BERLIN_DEBUG
+                    Debug.Assert(IsValidSpecimen(child1, dataLenSum));
+                    Debug.Assert(IsValidSpecimen(child2, dataLenSum));
+#endif
+
                     for(int j = 0;
                         j < dataLen;
                         ++j)

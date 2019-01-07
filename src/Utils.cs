@@ -23,6 +23,22 @@ namespace Berlin
 
             return result;
         }
+        
+        public static bool IsValidSpecimen(int[] arr, int dataLenSum)
+        {
+            bool result;
+
+            int arrSum = 0;
+            for(int i = 0;
+                i < arr.Length;
+                ++i)
+            {
+                arrSum += arr[i];
+            }
+
+            result = arrSum == dataLenSum ? true : false;
+            return result;
+        }
 
         [Conditional(define_BERLIN_DEBUG)]
         public static void Debug_StartTimer()
