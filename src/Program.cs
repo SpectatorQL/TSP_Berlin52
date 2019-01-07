@@ -240,7 +240,7 @@ namespace Berlin
             return result;
         }
 
-        static void Mutate(int[] child, int dataLen, int nodesToMutate)
+        static void ScrambleMutation(int[] child, int dataLen, int nodesToMutate)
         {
             int[] mutationIndices = new int[nodesToMutate];
             for(int i = 0;
@@ -260,6 +260,29 @@ namespace Berlin
                 int node = child[j];
                 child[j] = child[k];
                 child[k] = node;
+            }
+        }
+
+        static void InversionMutation(int[] child, int dataLen)
+        {
+            int begin = _rand.Next(dataLen / 2);
+            int end = _rand.Next(dataLen / 2, dataLen);
+
+            int len = (end - begin) + 1;
+            int[] buffer = new int[len];
+
+            int i = begin;
+            int j = 0;
+            while(i <= end)
+            {
+                buffer[j++] = child[i++];
+            }
+
+            i = end;
+            j = 0;
+            while(i >= begin)
+            {
+                child[i--] = buffer[j++];
             }
         }
 
@@ -431,7 +454,7 @@ namespace Berlin
 
 #if BERLIN_DEBUG
             settings.DataFile = "data\\berlin52.txt";
-            settings.M = 1000;
+            settings.M = 40;
             settings.MutationChance = 0.04;
             settings.Selection = TournamentSelect;
             settings.Crossover = PMXCrossover;
@@ -551,15 +574,17 @@ namespace Berlin
                     double d = _rand.Next(range) / (double)range;
                     if(mutationChance >= d)
                     {
+                        //ScrambleMutation(child1, dataLen, settings.NodesToMutate);
+                        InversionMutation(child1, dataLen);
                         ++_mutations;
-                        Mutate(child1, dataLen, settings.NodesToMutate);
                     }
 
                     d = _rand.Next(range) / (double)range;
                     if(mutationChance >= d)
                     {
+                        //ScrambleMutation(child2, dataLen, settings.NodesToMutate);
+                        InversionMutation(child1, dataLen);
                         ++_mutations;
-                        Mutate(child2, dataLen, settings.NodesToMutate);
                     }
 
                     
