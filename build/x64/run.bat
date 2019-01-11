@@ -6,5 +6,4 @@ set mutationChance=0.04
 set selection=tournament
 set crossover=PMX
 
-@echo on
-start "TSP_Berlin52" Berlin.exe %data% %populationSize% %mutationChance% -%selection% -%crossover%
+call Berlin.exe %data% %populationSize% %mutationChance% -%selection% -%crossover%
