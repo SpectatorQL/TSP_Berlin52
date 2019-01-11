@@ -28,7 +28,6 @@ namespace Berlin
         static bool _running = true;
 
         static uint _i = 0;
-        static ulong _mutations = 0;
         static StringBuilder _outputSB = new StringBuilder();
 
         static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
@@ -93,6 +92,22 @@ namespace Berlin
             }
         }
 
+        static int FindNode(int[] child, int node, int leftCut, int rightCut)
+        {
+            int result = -1;
+
+            for(int i = leftCut; i <= rightCut; i++)
+            {
+                if(node == child[i])
+                {
+                    result = i;
+                    break;
+                }
+            }
+
+            return result;
+        }
+
         static void PMXCrossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen)
         {
             for(int i = leftCut;
@@ -130,22 +145,6 @@ namespace Berlin
             }
         }
 
-        static int FindNode(int[] child, int node, int leftCut, int rightCut)
-        {
-            int result = -1;
-
-            for(int i = leftCut; i <= rightCut; i++)
-            {
-                if(node == child[i])
-                {
-                    result  = i;
-                    break;
-                }
-            }
-
-            return result;
-        }
-
         static void OXCrossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen)
         {
             for(int i = leftCut;
@@ -155,53 +154,33 @@ namespace Berlin
                 child[i] = firstParent[i];
             }
 
-            int crossLen = (rightCut - leftCut) + 1;
-            int[] crossSection = new int[crossLen];
-            Array.Copy(child, leftCut, crossSection, 0, crossLen);
-            Array.Sort(crossSection);
-
-            int nodesToCopy = dataLen - crossLen;
+            int nodesToCopy = dataLen - ((rightCut - leftCut) + 1);
+            int childIdx = rightCut + 1;
+            int parentIdx = childIdx;
+            while(nodesToCopy > 0)
             {
-                int i = rightCut + 1;
-                int j = i;
-                while(nodesToCopy > 0)
+                if(childIdx == dataLen)
                 {
-                    if(i >= dataLen)
-                    {
-                        i = 0;
-                    }
-                    if(j >= dataLen)
-                    {
-                        j = 0;
-                    }
+                    childIdx = 0;
+                }
+                if(parentIdx == dataLen)
+                {
+                    parentIdx = 0;
+                }
 
-                    int node = secondParent[j];
-                    if(NodeOutsideCrossSection(node, crossSection))
-                    {
-                        child[i] = node;
-                        --nodesToCopy;
-                        ++j;
-                        ++i;
-                    }
-                    else
-                    {
-                        ++j;
-                    }
+                int node = secondParent[parentIdx];
+                if(FindNode(child, node, leftCut, rightCut) == -1)
+                {
+                    child[childIdx] = node;
+                    --nodesToCopy;
+                    ++parentIdx;
+                    ++childIdx;
+                }
+                else
+                {
+                    ++parentIdx;
                 }
             }
-        }
-
-        static bool NodeOutsideCrossSection(int node, int[] crossSection)
-        {
-            bool result = false;
-
-            int bsResult = Array.BinarySearch(crossSection, node);
-            if(bsResult < 0)
-            {
-                result = true;
-            }
-
-            return result;
         }
 
         static void ScrambleMutation(int[] child, int dataLen, int nodesToMutate)
@@ -289,10 +268,8 @@ namespace Berlin
                 _outputSB.Append('-');
             }
 
-            string output = string.Format("Iterations:{0} Mutations:{1} Best value:{2}\n"
-                + "Best path:{3}\n",
+            string output = string.Format("Iterations:{0} Best value:{1}\n Best path:{2}\n",
                 _i,
-                _mutations,
                 bestVal,
                 _outputSB.ToString());
             Console.WriteLine(output);
@@ -400,7 +377,6 @@ namespace Berlin
 
         static void Main(string[] args)
         {
-            string header;
             int dataLen;
             int[,] data;
             
@@ -434,7 +410,7 @@ namespace Berlin
             using(FileStream stream = new FileStream(settings.DataFile, FileMode.Open, FileAccess.Read, FileShare.Read))
             using(StreamReader reader = new StreamReader(stream))
             {
-                header = reader.ReadLine();
+                string header = reader.ReadLine();
                 dataLen = int.Parse(header);
                 data = new int[dataLen, dataLen];
 
@@ -459,13 +435,13 @@ namespace Berlin
             }
 
 #if BERLIN_DEBUG
-            int dataLenSum = 0;
+            int validationSum = 0;
 
             for(int i = 0;
                 i < dataLen;
                 ++i)
             {
-                dataLenSum += i;
+                validationSum += i;
             }
 #endif
 
@@ -551,7 +527,6 @@ namespace Berlin
                     {
                         //ScrambleMutation(child1, dataLen, settings.NodesToMutate);
                         InversionMutation(child1, dataLen);
-                        ++_mutations;
                     }
 
                     d = _rand.Next(range) / (double)range;
@@ -559,12 +534,11 @@ namespace Berlin
                     {
                         //ScrambleMutation(child2, dataLen, settings.NodesToMutate);
                         InversionMutation(child1, dataLen);
-                        ++_mutations;
                     }
 
 #if BERLIN_DEBUG
-                    Debug.Assert(IsValidSpecimen(child1, dataLenSum));
-                    Debug.Assert(IsValidSpecimen(child2, dataLenSum));
+                    Debug.Assert(IsValidSpecimen(child1, validationSum));
+                    Debug.Assert(IsValidSpecimen(child2, validationSum));
 #endif
 
                     for(int j = 0;
