@@ -93,102 +93,66 @@ namespace Berlin
             }
         }
 
-        static void PMXCrossover(int[] child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        static void PMXCrossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen)
         {
             for(int i = leftCut;
                 i <= rightCut;
                 ++i)
             {
-                child[i] = p1[i];
+                child[i] = firstParent[i];
             }
 
-            /*
-                NOTE(SpectatorQL): Instead of doing all the evil stuff with (index, value)
-                pairs right away, I figured I could just give the child all of p2's remaining nodes
-                first and then do all those crazy shenanigans.
-            */
+
             for(int i = 0;
+                i < leftCut;
+                ++i)
+            {
+                int node = secondParent[i];
+                int pos = -1;
+                while((pos = FindNode(child, node, leftCut, rightCut)) > -1)
+                {
+                    node = secondParent[pos];
+                }
+                child[i] = node;
+            }
+
+            for(int i = rightCut + 1;
                 i < dataLen;
                 ++i)
             {
-                if(i == leftCut)
+                int node = secondParent[i];
+                int pos = -1;
+                while((pos = FindNode(child, node, leftCut, rightCut)) > -1)
                 {
-                    i = rightCut + 1;
+                    node = secondParent[pos];
                 }
-
-                child[i] = p2[i];
-            }
-
-            List<int> freeIndices = new List<int>();
-            FreeIndices(freeIndices, p1, p2, leftCut, rightCut);
-
-            for(int i = 0;
-                i < freeIndices.Count;
-                ++i)
-            {
-                int freeIndex = freeIndices[i];
-                int nodeToCopy = p2[freeIndex];
-
-                int copyIndex = freeIndex;
-                do
-                {
-                    int oppositeNode = p1[copyIndex];
-                    for(int j = 0;
-                        j < dataLen;
-                        ++j)
-                    {
-                        if(p2[j] == oppositeNode)
-                        {
-                            copyIndex = j;
-                            break;
-                        }
-                    }
-                } while(IndexInsideCrossSection(copyIndex, leftCut, rightCut));
-
-                child[copyIndex] = nodeToCopy;
+                child[i] = node;
             }
         }
 
-        static void FreeIndices(List<int> indices, int[] p1, int[] p2, int leftCut, int rightCut)
+        static int FindNode(int[] child, int node, int leftCut, int rightCut)
         {
-            for(int i = leftCut;
-                i <= rightCut;
-                ++i)
+            int result = -1;
+
+            for(int i = leftCut; i <= rightCut; i++)
             {
-                int node = p2[i];
-                bool notInCrossSection = true;
-
-                for(int j = leftCut;
-                    j <= rightCut;
-                    ++j)
+                if(node == child[i])
                 {
-                    if(node == p1[j])
-                    {
-                        notInCrossSection = false;
-                        break;
-                    }
-                }
-
-                if(notInCrossSection)
-                {
-                    indices.Add(i);
+                    result  = i;
+                    break;
                 }
             }
-        }
 
-        static bool IndexInsideCrossSection(int idx, int start, int end)
-        {
-            bool result = (idx >= start && idx <= end) ? true : false;
             return result;
         }
 
-        static void OXCrossover(int[] child, int[] p1, int[] p2, int leftCut, int rightCut, int dataLen)
+        static void OXCrossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen)
         {
             for(int i = leftCut;
                 i <= rightCut;
                 ++i)
             {
-                child[i] = p1[i];
+                child[i] = firstParent[i];
             }
 
             int crossLen = (rightCut - leftCut) + 1;
@@ -211,7 +175,7 @@ namespace Berlin
                         j = 0;
                     }
 
-                    int node = p2[j];
+                    int node = secondParent[j];
                     if(NodeOutsideCrossSection(node, crossSection))
                     {
                         child[i] = node;
