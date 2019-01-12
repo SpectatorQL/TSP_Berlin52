@@ -10,12 +10,19 @@ namespace Berlin
     delegate void op_selection(int[] selected, int[] fitnessValues, int m);
     delegate void op_crossover(int[] child, int[] firstParent, int[] secondParent, int leftCut, int rightCut, int dataLen);
 
+    class BestSpecimen
+    {
+        public int[] Nodes;
+        public int Value;
+    }
+
     class ProgramSettings
     {
         public string DataFile;
         public int M;
         public double MutationChance;
-        public int NodesToMutate;
+
+        public int ScrambleNodesToMutate;
 
         public op_selection Selection;
         public op_crossover Crossover;
@@ -242,35 +249,21 @@ namespace Berlin
             }
         }
 
-        static void PrintOutput(int[,] pop, int[] fitVals, int m, int dataLen)
+        static void PrintOutput(BestSpecimen bestSpecimen, int dataLen)
         {
-            int bestVal = fitVals[0];
-            int bestValIdx = 0;
-            for(int i = 1;
-                i < m;
-                ++i)
-            {
-                int val = fitVals[i];
-                if(val < bestVal)
-                {
-                    bestVal = val;
-                    bestValIdx = i;
-                }
-            }
-
             _outputSB.Clear();
             for(int i = 0;
                 i < dataLen;
                 ++i)
             {
-                int node = pop[bestValIdx, i];
+                int node = bestSpecimen.Nodes[i];
                 _outputSB.Append(node);
                 _outputSB.Append('-');
             }
 
-            string output = string.Format("Iterations:{0} Best value:{1}\n Best path:{2}\n",
+            string output = string.Format("Iterations:{0} Best value:{1}\nBest path:{2}\n",
                 _i,
-                bestVal,
+                bestSpecimen.Value,
                 _outputSB.ToString());
             Console.WriteLine(output);
         }
@@ -444,6 +437,11 @@ namespace Berlin
                 validationSum += i;
             }
 #endif
+            var bestSpecimen = new BestSpecimen
+            {
+                Nodes = new int[dataLen],
+                Value = int.MaxValue
+            };
 
             int m = settings.M;
             double mutationChance = settings.MutationChance;
@@ -451,7 +449,7 @@ namespace Berlin
             op_crossover Crossover = settings.Crossover;
 
             // TODO: Fix this. Maybe put it in the settings as well?
-            settings.NodesToMutate = (dataLen / 10) + (dataLen % 10);
+            settings.ScrambleNodesToMutate = (dataLen / 10) + (dataLen % 10);
 
             population = new int[m, dataLen];
             fitnessValues = new int[m];
@@ -477,7 +475,6 @@ namespace Berlin
             }
             EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
-            PrintOutput(population, fitnessValues, m, dataLen);
 
             int[] selected = new int[m];
             while(Continue())
@@ -552,15 +549,39 @@ namespace Berlin
                 
                 EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
-                if(_i % 1000 == 0)
+
+                int bestVal = fitnessValues[0];
+                int bestValIdx = 0;
+                for(int i = 1;
+                    i < m;
+                    ++i)
                 {
-                    PrintOutput(population, fitnessValues, m, dataLen);
+                    int val = fitnessValues[i];
+                    if(val < bestVal)
+                    {
+                        bestVal = val;
+                        bestValIdx = i;
+                    }
                 }
+
+                if(bestVal < bestSpecimen.Value)
+                {
+                    for(int i = 0;
+                        i < dataLen;
+                        ++i)
+                    {
+                        bestSpecimen.Nodes[i] = population[bestValIdx, i];
+                    }
+                    bestSpecimen.Value = bestVal;
+
+                    PrintOutput(bestSpecimen, dataLen);
+                }
+
 
                 Debug_StopTimer();
             }
 
-            PrintOutput(population, fitnessValues, m, dataLen);
+            PrintOutput(bestSpecimen, dataLen);
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
         }
