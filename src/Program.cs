@@ -481,6 +481,7 @@ namespace Berlin
             {
                 Debug_StartTimer();
 
+                int[,] newPopulation = new int[m, dataLen];
                 Selection(selected, fitnessValues, m);
                 
                 for(int i = 0;
@@ -489,15 +490,15 @@ namespace Berlin
                 {
                     int[] parent1 = new int[dataLen];
                     int[] parent2 = new int[dataLen];
-                    int p1 = i;
-                    int p2 = p1 + 1;
+                    int p1 = selected[i];
+                    int p2 = selected[i + 1];
                     
                     for(int j = 0;
                         j < dataLen;
                         ++j)
                     {
-                        parent1[j] = population[selected[p1], j];
-                        parent2[j] = population[selected[p2], j];
+                        parent1[j] = population[p1, j];
+                        parent2[j] = population[p2, j];
                     }
 
 
@@ -542,11 +543,12 @@ namespace Berlin
                         j < dataLen;
                         ++j)
                     {
-                        population[p1, j] = child1[j];
-                        population[p2, j] = child2[j];
+                        newPopulation[i, j] = child1[j];
+                        newPopulation[i + 1, j] = child2[j];
                     }
                 }
-                
+
+                population = newPopulation;
                 EvaluateFitness(data, population, m, dataLen, fitnessValues);
 
 
