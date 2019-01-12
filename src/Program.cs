@@ -19,10 +19,8 @@ namespace Berlin
     class ProgramSettings
     {
         public string DataFile;
-        public int M;
+        public int PopulationSize;
         public double MutationChance;
-
-        public int ScrambleNodesToMutate;
 
         public op_selection Selection;
         public op_crossover Crossover;
@@ -37,15 +35,15 @@ namespace Berlin
         static uint _i = 0;
         static StringBuilder _outputSB = new StringBuilder();
 
-        static void EvaluateFitness(int[,] data, int[,] pop, int popLen0, int popLen1, int[] fitVals)
+        static void EvaluateFitness(int[,] data, int[,] pop, int m, int dataLen, int[] fitVals)
         {
             for(int i = 0;
-                i < popLen0;
+                i < m;
                 ++i)
             {
                 int fitVal = 0;
                 int j = 0;
-                while(j < popLen1 - 1)
+                while(j < dataLen - 1)
                 {
                     int row = pop[i, j];
                     int col = pop[i, ++j];
@@ -176,40 +174,17 @@ namespace Berlin
                 }
 
                 int node = secondParent[parentIdx];
-                if(FindNode(child, node, leftCut, rightCut) == -1)
+                if(FindNode(child, node, leftCut, rightCut) > -1)
+                {
+                    ++parentIdx;
+                }
+                else
                 {
                     child[childIdx] = node;
                     --nodesToCopy;
                     ++parentIdx;
                     ++childIdx;
                 }
-                else
-                {
-                    ++parentIdx;
-                }
-            }
-        }
-
-        static void ScrambleMutation(int[] child, int dataLen, int nodesToMutate)
-        {
-            int[] mutationIndices = new int[nodesToMutate];
-            for(int i = 0;
-                i < nodesToMutate;
-                ++i)
-            {
-                mutationIndices[i] = _rand.Next(dataLen);
-            }
-
-            for(int i = 0;
-                i < nodesToMutate;
-                ++i)
-            {
-                int j = _rand.Next(dataLen);
-                int k = mutationIndices[i];
-
-                int node = child[j];
-                child[j] = child[k];
-                child[k] = node;
             }
         }
 
@@ -279,7 +254,7 @@ namespace Berlin
                 {
                     settings.DataFile = args[0];
 
-                    bool popSizeParseSuccess = int.TryParse(args[1], out settings.M);
+                    bool popSizeParseSuccess = int.TryParse(args[1], out settings.PopulationSize);
                     if(popSizeParseSuccess)
                     {
                         /*
@@ -437,19 +412,17 @@ namespace Berlin
                 validationSum += i;
             }
 #endif
+
             var bestSpecimen = new BestSpecimen
             {
                 Nodes = new int[dataLen],
                 Value = int.MaxValue
             };
 
-            int m = settings.M;
+            int m = settings.PopulationSize;
             double mutationChance = settings.MutationChance;
             op_selection Selection = settings.Selection;
             op_crossover Crossover = settings.Crossover;
-
-            // TODO: Fix this. Maybe put it in the settings as well?
-            settings.ScrambleNodesToMutate = (dataLen / 10) + (dataLen % 10);
 
             population = new int[m, dataLen];
             fitnessValues = new int[m];
@@ -457,13 +430,14 @@ namespace Berlin
                 i < m;
                 ++i)
             {
-                int j = 0;
-                while(j < dataLen)
+                for(int j = 0;
+                    j < dataLen;
+                    ++j)
                 {
-                    population[i, j] = j++;
+                    population[i, j] = j;
                 }
 
-                for(j = 0;
+                for(int j = 0;
                     j < dataLen;
                     ++j)
                 {
@@ -502,15 +476,9 @@ namespace Berlin
                     }
 
 
-                    int leftCut = -1;
-                    int rightCut = -1;
-                    int minLen = dataLen / 4;
-                    while(minLen > (rightCut - leftCut))
-                    {
-                        int midPoint = dataLen / 2;
-                        leftCut = _rand.Next(1, midPoint);
-                        rightCut = _rand.Next(midPoint, dataLen - 1);
-                    }
+                    int midPoint = dataLen / 2;
+                    int leftCut = _rand.Next(1, midPoint);
+                    int rightCut = _rand.Next(midPoint, dataLen - 1);
 
 
                     int[] child1 = new int[dataLen];
@@ -523,14 +491,12 @@ namespace Berlin
                     double d = _rand.Next(range) / (double)range;
                     if(mutationChance >= d)
                     {
-                        //ScrambleMutation(child1, dataLen, settings.NodesToMutate);
                         InversionMutation(child1, dataLen);
                     }
 
                     d = _rand.Next(range) / (double)range;
                     if(mutationChance >= d)
                     {
-                        //ScrambleMutation(child2, dataLen, settings.NodesToMutate);
                         InversionMutation(child1, dataLen);
                     }
 
@@ -585,7 +551,6 @@ namespace Berlin
 
             PrintOutput(bestSpecimen, dataLen);
             Console.WriteLine("Press any key to exit.");
-            Console.ReadKey();
         }
     }
 }
