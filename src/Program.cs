@@ -351,29 +351,22 @@ namespace Berlin
             int[,] population;
             int[] fitnessValues;
 
-            // NOTE(SpectatorQL): Ctrl + C stops the program.
+#if BERLIN_DEBUG
+            Debugger.Launch();
+#endif
+            
             Console.CancelKeyPress += (sender, e) =>
             {
                 _running = false;
-                e.Cancel = true;
             };
 
             ProgramSettings settings = new ProgramSettings();
-
-#if BERLIN_DEBUG
-            settings.DataFile = "data\\berlin52.txt";
-            settings.M = 40;
-            settings.MutationChance = 0.04;
-            settings.Selection = TournamentSelect;
-            settings.Crossover = PMXCrossover;
-#else
             string error = null;
             if(!ParseCommandLine(args, settings, ref error))
             {
                 Console.WriteLine(error);
                 throw new NullReferenceException();
             }
-#endif
 
             using(FileStream stream = new FileStream(settings.DataFile, FileMode.Open, FileAccess.Read, FileShare.Read))
             using(StreamReader reader = new StreamReader(stream))
@@ -403,8 +396,12 @@ namespace Berlin
             }
 
 #if BERLIN_DEBUG
+            /*
+                NOTE(SpectatorQL): This doesn't catch situations where some wild
+                combination of nodes gives us the exact same sum, but at least
+                it provides _some_ means of asserting that a specimen is valid.
+            */
             int validationSum = 0;
-
             for(int i = 0;
                 i < dataLen;
                 ++i)
@@ -549,7 +546,6 @@ namespace Berlin
                 Debug_StopTimer();
             }
 
-            PrintOutput(bestSpecimen, dataLen);
             Console.WriteLine("Press any key to exit.");
         }
     }
