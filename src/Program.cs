@@ -474,8 +474,9 @@ namespace Berlin
 
 
                     int midPoint = dataLen / 2;
-                    int leftCut = _rand.Next(1, midPoint);
-                    int rightCut = _rand.Next(midPoint, dataLen - 1);
+                    int offset = 0;
+                    int leftCut = _rand.Next(offset, midPoint);
+                    int rightCut = _rand.Next(midPoint, dataLen - offset);
 
 
                     int[] child1 = new int[dataLen];
@@ -484,15 +485,15 @@ namespace Berlin
                     Crossover(child2, parent2, parent1, leftCut, rightCut, dataLen);
 
 
-                    int range = 1000;
+                    int range = 100;
                     double d = _rand.Next(range) / (double)range;
-                    if(mutationChance >= d)
+                    if(d <= mutationChance)
                     {
                         InversionMutation(child1, dataLen);
                     }
 
                     d = _rand.Next(range) / (double)range;
-                    if(mutationChance >= d)
+                    if(d <= mutationChance)
                     {
                         InversionMutation(child1, dataLen);
                     }
