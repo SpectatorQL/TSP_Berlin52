@@ -43,13 +43,18 @@ namespace Berlin
             {
                 int fitVal = 0;
                 int j = 0;
+
+                int row;
+                int col;
                 while(j < dataLen - 1)
                 {
-                    int row = pop[i, j];
-                    int col = pop[i, ++j];
+                    row = pop[i, j];
+                    col = pop[i, ++j];
                     fitVal += data[row, col];
                 }
-                fitVal += data[j, 0];
+                row = pop[i, j];
+                col = pop[i, 0];
+                fitVal += data[row, col];
 
                 fitVals[i] = fitVal;
             }
